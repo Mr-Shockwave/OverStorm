@@ -488,7 +488,7 @@ export function StormMapInner({
                   </div>
                 </dl>
                 <Link
-                  href={`/opportunities?id=${opportunity._id}`}
+                  href={`/agents?id=${opportunity._id}`}
                   className="flex w-full items-center justify-center rounded-md bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-slate-800"
                 >
                   Open Opportunity

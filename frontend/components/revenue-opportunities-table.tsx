@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { formatCurrency } from "@/lib/format";
 
 type Opportunity = {
@@ -60,14 +61,19 @@ export function RevenueOpportunitiesTable({
                 className="transition-colors hover:bg-slate-50/60"
               >
                 <td className="px-6 py-4">
-                  <p className="font-medium text-slate-900">
-                    {opportunity.propertyName}
-                  </p>
-                  <p className="mt-0.5 text-xs text-slate-500">
-                    {[opportunity.assetType, opportunity.city]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </p>
+                  <Link
+                    href={`/agents?id=${opportunity._id}`}
+                    className="group block"
+                  >
+                    <p className="font-medium text-slate-900 group-hover:text-sky-700">
+                      {opportunity.propertyName}
+                    </p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {[opportunity.assetType, opportunity.city]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                  </Link>
                 </td>
                 <td className="px-6 py-4">
                   <span

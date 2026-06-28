@@ -59,6 +59,25 @@ export function AgentOutputDisplay({
       );
 
     case "decision_maker":
+      if (output.availability === "unavailable") {
+        return (
+          <div className="space-y-3">
+            <OutputRow label="Status" value="Visit recommended" highlight />
+            {output.message && (
+              <p className="text-sm leading-relaxed text-slate-400">
+                {output.message}
+              </p>
+            )}
+            {output.visitLocation && (
+              <OutputRow label="Visit" value={output.visitLocation} />
+            )}
+            {output.bestCandidate && (
+              <OutputRow label="Closest match" value={output.bestCandidate} />
+            )}
+          </div>
+        );
+      }
+
       return (
         <div className="space-y-3">
           <OutputRow label="Company" value={output.company ?? "—"} />

@@ -13,6 +13,10 @@ export type AgentOutput = {
   openAiRiskReasoning?: string;
   openAiRevenueSummary?: string;
   openAiOutreachRecommendation?: string;
+  availability?: string;
+  message?: string;
+  visitLocation?: string;
+  bestCandidate?: string;
 };
 
 export type AgentResultData = {
@@ -59,14 +63,80 @@ export const AGENT_DEFINITIONS: AgentDefinition[] = [
 ];
 
 export const WORKFLOW_STEPS = [
-  { id: "storm_event", label: "Storm Event" },
-  { id: "risk", label: "Risk Agent" },
-  { id: "revenue", label: "Revenue Agent" },
-  { id: "decision_maker", label: "Decision Maker Agent" },
+  { id: "storm_event", label: "Storm Replay" },
+  { id: "risk", label: "Risk Model" },
+  { id: "decision_maker", label: "Discovery" },
   { id: "orange_slice_enrichment", label: "Orange Slice" },
-  { id: "outreach", label: "Outreach Package" },
+  { id: "outreach", label: "Revenue Package" },
   { id: "pipeline", label: "Pipeline" },
 ] as const;
+
+export type WorkflowStepId = (typeof WORKFLOW_STEPS)[number]["id"];
+
+export type DiscoveryStatus =
+  | "pending"
+  | "running"
+  | "found"
+  | "unavailable"
+  | "failed";
+
+export type PackageStatus = "pending" | "running" | "completed" | "failed";
+
+export function discoveryStatusStyles(status: DiscoveryStatus): string {
+  switch (status) {
+    case "running":
+      return "border-sky-200 bg-sky-50 text-sky-700";
+    case "found":
+      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    case "unavailable":
+      return "border-amber-200 bg-amber-50 text-amber-800";
+    case "failed":
+      return "border-red-200 bg-red-50 text-red-700";
+    default:
+      return "border-slate-200 bg-slate-100 text-slate-600";
+  }
+}
+
+export function packageStatusStyles(status: PackageStatus): string {
+  switch (status) {
+    case "running":
+      return "border-sky-200 bg-sky-50 text-sky-700";
+    case "completed":
+      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    case "failed":
+      return "border-red-200 bg-red-50 text-red-700";
+    default:
+      return "border-slate-200 bg-slate-100 text-slate-600";
+  }
+}
+
+export function formatDiscoveryStatus(status: DiscoveryStatus): string {
+  switch (status) {
+    case "running":
+      return "Running";
+    case "found":
+      return "Contact Found";
+    case "unavailable":
+      return "Visit Needed";
+    case "failed":
+      return "Failed";
+    default:
+      return "Pending";
+  }
+}
+
+export function formatPackageStatus(status: PackageStatus): string {
+  switch (status) {
+    case "running":
+      return "Generating";
+    case "completed":
+      return "Ready";
+    case "failed":
+      return "Failed";
+    default:
+      return "Pending";
+  }
+}
 
 export function getAgentResult(
   results: AgentResultData[],

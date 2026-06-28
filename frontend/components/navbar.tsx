@@ -8,7 +8,6 @@ import { formatNumber } from "@/lib/format";
 
 const navLinks = [
   { href: "/", label: "Dashboard" },
-  { href: "/opportunities", label: "Opportunities" },
   { href: "/agents", label: "Agents" },
 ] as const;
 

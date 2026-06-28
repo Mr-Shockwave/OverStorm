@@ -1,16 +1,17 @@
-import { Suspense } from "react";
-import { OpportunitiesWorkspace } from "@/components/opportunities-workspace";
+import { redirect } from "next/navigation";
 
-export default function OpportunitiesPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-[50vh] items-center justify-center">
-          <span className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-slate-600" />
-        </div>
-      }
-    >
-      <OpportunitiesWorkspace />
-    </Suspense>
-  );
+type OpportunitiesRedirectPageProps = {
+  searchParams: Promise<{ id?: string }>;
+};
+
+export default async function OpportunitiesRedirectPage({
+  searchParams,
+}: OpportunitiesRedirectPageProps) {
+  const params = await searchParams;
+
+  if (params.id) {
+    redirect(`/agents?id=${params.id}`);
+  }
+
+  redirect("/agents");
 }
