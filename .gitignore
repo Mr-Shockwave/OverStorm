@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Environment (Convex + local secrets)
+.env
+.env.local
+.env.*.local
+
+# Next.js build output (monorepo safety net)
+**/.next/
+out/
+
+# OS junk
+.DS_Store
+Thumbs.db
