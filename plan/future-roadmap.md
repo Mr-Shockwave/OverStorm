@@ -182,3 +182,42 @@ Follow-up Agent
 Pipeline Agent
 
 All coordinated through Convex.
+
+
+# Future UI Expansion
+
+## Dashboard
+
+Executive overview of storm-driven revenue opportunities.
+
+## Opportunities
+
+Operational workspace for sales teams.
+
+Displays:
+
+- Properties
+- Risk scores
+- Revenue projections
+- Decision makers
+- Outreach status
+
+## Agent Control Center
+
+Visual monitoring for autonomous agents.
+
+Agents:
+
+- Risk Analyst
+- Revenue Analyst
+- Decision Maker Finder
+- Outreach Generator
+
+Displays:
+
+- current task
+- status
+- reasoning
+- outputs
+
+Future version will support fully autonomous workflows.
