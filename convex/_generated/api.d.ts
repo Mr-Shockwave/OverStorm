@@ -13,6 +13,7 @@ import type * as agentWorkflow from "../agentWorkflow.js";
 import type * as agents from "../agents.js";
 import type * as dashboard from "../dashboard.js";
 import type * as discoveryWorkflow from "../discoveryWorkflow.js";
+import type * as mapData from "../mapData.js";
 import type * as opportunities from "../opportunities.js";
 import type * as opportunityDb from "../opportunityDb.js";
 import type * as packageDb from "../packageDb.js";
@@ -35,6 +36,7 @@ declare const fullApi: ApiFromModules<{
   agents: typeof agents;
   dashboard: typeof dashboard;
   discoveryWorkflow: typeof discoveryWorkflow;
+  mapData: typeof mapData;
   opportunities: typeof opportunities;
   opportunityDb: typeof opportunityDb;
   packageDb: typeof packageDb;

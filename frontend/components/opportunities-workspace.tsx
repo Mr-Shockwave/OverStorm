@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "convex/react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -23,9 +24,18 @@ function formatStatus(status: string): string {
 
 export function OpportunitiesWorkspace() {
   const data = useQuery(api.opportunities.listOpportunities);
-  const [selectedId, setSelectedId] = useState<Id<"opportunities"> | null>(
-    null,
-  );
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const urlOpportunityId = searchParams.get("id") as Id<"opportunities"> | null;
+  const [clickedId, setClickedId] = useState<Id<"opportunities"> | null>(null);
+  const selectedId = clickedId ?? urlOpportunityId;
+
+  function handleCloseDrawer() {
+    setClickedId(null);
+    if (urlOpportunityId) {
+      router.replace("/opportunities", { scroll: false });
+    }
+  }
 
   if (data === undefined) {
     return (
@@ -100,7 +110,7 @@ export function OpportunitiesWorkspace() {
                 {data.opportunities.map((opportunity) => (
                   <tr
                     key={opportunity._id}
-                    onClick={() => setSelectedId(opportunity._id)}
+                    onClick={() => setClickedId(opportunity._id)}
                     className={`cursor-pointer transition-colors hover:bg-sky-50/50 ${
                       selectedId === opportunity._id ? "bg-sky-50/80" : ""
                     }`}
@@ -136,7 +146,7 @@ export function OpportunitiesWorkspace() {
 
       <PropertyDetailDrawer
         opportunityId={selectedId}
-        onClose={() => setSelectedId(null)}
+        onClose={handleCloseDrawer}
       />
     </AppShell>
   );

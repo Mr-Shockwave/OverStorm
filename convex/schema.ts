@@ -93,6 +93,26 @@ export const revenueCapturePackageContent = v.object({
   aiReasoning: v.string(),
 });
 
+export const stormTrackPoint = v.object({
+  lat: v.number(),
+  lng: v.number(),
+  label: v.optional(v.string()),
+  hoursOffset: v.optional(v.number()),
+});
+
+export const riskZoneLevel = v.union(
+  v.literal("high"),
+  v.literal("medium"),
+  v.literal("low"),
+);
+
+export const stormRiskZone = v.object({
+  level: riskZoneLevel,
+  centerLat: v.number(),
+  centerLng: v.number(),
+  radiusMeters: v.number(),
+});
+
 export const agentOutput = v.object({
   riskScore: v.optional(v.number()),
   reasoning: v.optional(v.array(v.string())),
@@ -120,6 +140,11 @@ export default defineSchema({
     expectedRevenueImpact: v.number(),
     status: stormStatus,
     updatedAt: v.number(),
+    mapCenterLat: v.optional(v.number()),
+    mapCenterLng: v.optional(v.number()),
+    mapZoom: v.optional(v.number()),
+    stormTrack: v.optional(v.array(stormTrackPoint)),
+    riskZones: v.optional(v.array(stormRiskZone)),
   }).index("by_status", ["status"]),
 
   opportunities: defineTable({
@@ -133,6 +158,8 @@ export default defineSchema({
     propertyNotes: v.optional(v.string()),
     riskExplanation: v.optional(v.string()),
     revenueExplanation: v.optional(v.string()),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
   })
     .index("by_storm", ["stormId"])
     .index("by_storm_and_rank", ["stormId", "priorityRank"]),

@@ -1,4 +1,9 @@
 import { query } from "./_generated/server";
+import {
+  HURRICANE_MILTON_TRACK,
+  MIAMI_BEACH_CENTER,
+  MIAMI_BEACH_RISK_ZONES,
+} from "./mapData";
 
 export const getDashboard = query({
   args: {},
@@ -18,10 +23,11 @@ export const getDashboard = query({
         opportunities: [],
         pipeline: null,
         metrics: null,
+        map: null,
       };
     }
 
-    const [opportunities, pipelineRows] = await Promise.all([
+    const [opportunities, pipelineRows, decisionMakers] = await Promise.all([
       ctx.db
         .query("opportunities")
         .withIndex("by_storm", (q) => q.eq("stormId", activeStorm._id))
@@ -30,7 +36,12 @@ export const getDashboard = query({
         .query("pipelineMetrics")
         .withIndex("by_storm", (q) => q.eq("stormId", activeStorm._id))
         .collect(),
+      ctx.db.query("decisionMakers").collect(),
     ]);
+
+    const decisionMakerByOpportunity = new Map(
+      decisionMakers.map((record) => [record.opportunityId, record]),
+    );
 
     const pipeline = pipelineRows[0] ?? null;
 
@@ -42,6 +53,25 @@ export const getDashboard = query({
         return b.expectedRevenue - a.expectedRevenue;
       })
       .slice(0, 10);
+
+    const mapOpportunities = opportunities
+      .filter(
+        (opportunity) =>
+          opportunity.latitude !== undefined &&
+          opportunity.longitude !== undefined,
+      )
+      .map((opportunity) => ({
+        _id: opportunity._id,
+        propertyName: opportunity.propertyName,
+        riskScore: opportunity.riskScore,
+        expectedRevenue: opportunity.expectedRevenue,
+        status: opportunity.status,
+        latitude: opportunity.latitude!,
+        longitude: opportunity.longitude!,
+        decisionMakerStatus: decisionMakerByOpportunity.has(opportunity._id)
+          ? ("discovered" as const)
+          : ("pending" as const),
+      }));
 
     return {
       activeStormCount: activeStorms.length,
@@ -72,12 +102,26 @@ export const getDashboard = query({
         : null,
       metrics: pipeline
         ? {
-            propertiesAtRisk: pipeline.found,
-            highPriorityOpportunities: pipeline.highPriorityCount,
             projectedRevenue: activeStorm.expectedRevenueImpact,
-            meetingsBooked: pipeline.meetings,
+            propertiesAtRisk: pipeline.found,
           }
         : null,
+      map: {
+        center: {
+          lat: activeStorm.mapCenterLat ?? MIAMI_BEACH_CENTER.lat,
+          lng: activeStorm.mapCenterLng ?? MIAMI_BEACH_CENTER.lng,
+          zoom: activeStorm.mapZoom ?? MIAMI_BEACH_CENTER.zoom,
+        },
+        stormTrack:
+          activeStorm.stormTrack && activeStorm.stormTrack.length > 0
+            ? activeStorm.stormTrack
+            : [...HURRICANE_MILTON_TRACK],
+        riskZones:
+          activeStorm.riskZones && activeStorm.riskZones.length > 0
+            ? activeStorm.riskZones
+            : [...MIAMI_BEACH_RISK_ZONES],
+        opportunities: mapOpportunities,
+      },
     };
   },
 });

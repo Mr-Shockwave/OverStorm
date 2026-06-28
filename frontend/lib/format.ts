@@ -6,6 +6,13 @@ export function formatCurrency(amount: number, compact = false): string {
     return `$${formatted}M`;
   }
 
+  if (compact && amount >= 1_000) {
+    const thousands = amount / 1_000;
+    const formatted =
+      thousands % 1 === 0 ? thousands.toFixed(0) : thousands.toFixed(1);
+    return `$${formatted}k`;
+  }
+
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",

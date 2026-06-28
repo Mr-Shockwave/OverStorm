@@ -1,4 +1,10 @@
 import { mutation } from "./_generated/server";
+import {
+  HURRICANE_MILTON_TRACK,
+  MIAMI_BEACH_CENTER,
+  MIAMI_BEACH_RISK_ZONES,
+  OPPORTUNITY_MAP_COORDS,
+} from "./mapData";
 
 export const seedDashboard = mutation({
   args: {},
@@ -18,6 +24,11 @@ export const seedDashboard = mutation({
       expectedRevenueImpact: 1_200_000,
       status: "active",
       updatedAt: now,
+      mapCenterLat: MIAMI_BEACH_CENTER.lat,
+      mapCenterLng: MIAMI_BEACH_CENTER.lng,
+      mapZoom: MIAMI_BEACH_CENTER.zoom,
+      stormTrack: [...HURRICANE_MILTON_TRACK],
+      riskZones: [...MIAMI_BEACH_RISK_ZONES],
     });
 
     const opportunities = [
@@ -60,15 +71,31 @@ export const seedDashboard = mutation({
         revenueExplanation:
           "$58,000 expected value based on risk-adjusted property size and market rates.",
       },
+      {
+        propertyName: "Palm Grove Center",
+        riskScore: 62,
+        expectedRevenue: 22_000,
+        status: "identified" as const,
+        priorityRank: 4,
+        buildingYear: 1995,
+        propertyNotes: "Retail strip, inland exposure",
+        riskExplanation:
+          "Lower risk inland position with moderate wind exposure on aging retail structure.",
+        revenueExplanation:
+          "$22,000 opportunity from smaller footprint with residual storm damage potential.",
+      },
     ];
 
     let topOpportunityId: import("./_generated/dataModel").Id<"opportunities"> | null =
       null;
 
     for (const opportunity of opportunities) {
+      const coords = OPPORTUNITY_MAP_COORDS[opportunity.propertyName];
       const id = await ctx.db.insert("opportunities", {
         stormId,
         ...opportunity,
+        latitude: coords?.latitude,
+        longitude: coords?.longitude,
       });
       if (opportunity.priorityRank === 1) {
         topOpportunityId = id;
@@ -313,5 +340,80 @@ export const seedAgentDemo = mutation({
     });
 
     return { seeded: true, runId };
+  },
+});
+
+export const patchMapData = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const storms = await ctx.db.query("storms").collect();
+    let stormsPatched = 0;
+
+    for (const storm of storms) {
+      const needsPatch =
+        !storm.mapCenterLat ||
+        !storm.stormTrack?.length ||
+        !storm.riskZones?.length;
+
+      if (needsPatch) {
+        await ctx.db.patch(storm._id, {
+          mapCenterLat: MIAMI_BEACH_CENTER.lat,
+          mapCenterLng: MIAMI_BEACH_CENTER.lng,
+          mapZoom: MIAMI_BEACH_CENTER.zoom,
+          stormTrack: [...HURRICANE_MILTON_TRACK],
+          riskZones: [...MIAMI_BEACH_RISK_ZONES],
+        });
+        stormsPatched += 1;
+      }
+    }
+
+    const opportunities = await ctx.db.query("opportunities").collect();
+    let opportunitiesPatched = 0;
+
+    for (const opportunity of opportunities) {
+      const coords = OPPORTUNITY_MAP_COORDS[opportunity.propertyName];
+      if (!coords) continue;
+
+      if (
+        opportunity.latitude === undefined ||
+        opportunity.longitude === undefined
+      ) {
+        await ctx.db.patch(opportunity._id, {
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        });
+        opportunitiesPatched += 1;
+      }
+    }
+
+    const palmGrove = opportunities.find(
+      (opportunity) => opportunity.propertyName === "Palm Grove Center",
+    );
+    if (!palmGrove && storms[0]) {
+      const coords = OPPORTUNITY_MAP_COORDS["Palm Grove Center"];
+      await ctx.db.insert("opportunities", {
+        stormId: storms[0]._id,
+        propertyName: "Palm Grove Center",
+        riskScore: 62,
+        expectedRevenue: 22_000,
+        status: "identified",
+        priorityRank: 4,
+        buildingYear: 1995,
+        propertyNotes: "Retail strip, inland exposure",
+        riskExplanation:
+          "Lower risk inland position with moderate wind exposure on aging retail structure.",
+        revenueExplanation:
+          "$22,000 opportunity from smaller footprint with residual storm damage potential.",
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+      });
+      opportunitiesPatched += 1;
+    }
+
+    return {
+      patched: stormsPatched > 0 || opportunitiesPatched > 0,
+      stormsPatched,
+      opportunitiesPatched,
+    };
   },
 });
