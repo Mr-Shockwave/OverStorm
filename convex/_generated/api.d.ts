@@ -15,10 +15,13 @@ import type * as dashboard from "../dashboard.js";
 import type * as discoveryWorkflow from "../discoveryWorkflow.js";
 import type * as opportunities from "../opportunities.js";
 import type * as opportunityDb from "../opportunityDb.js";
+import type * as packageDb from "../packageDb.js";
+import type * as packageWorkflow from "../packageWorkflow.js";
 import type * as seed from "../seed.js";
 import type * as services_fiber from "../services/fiber.js";
 import type * as services_openai from "../services/openai.js";
 import type * as services_orangeSlice from "../services/orangeSlice.js";
+import type * as services_revenuePackage from "../services/revenuePackage.js";
 
 import type {
   ApiFromModules,
@@ -34,10 +37,13 @@ declare const fullApi: ApiFromModules<{
   discoveryWorkflow: typeof discoveryWorkflow;
   opportunities: typeof opportunities;
   opportunityDb: typeof opportunityDb;
+  packageDb: typeof packageDb;
+  packageWorkflow: typeof packageWorkflow;
   seed: typeof seed;
   "services/fiber": typeof services_fiber;
   "services/openai": typeof services_openai;
   "services/orangeSlice": typeof services_orangeSlice;
+  "services/revenuePackage": typeof services_revenuePackage;
 }>;
 
 /**

@@ -4,8 +4,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { ContactCard } from "@/components/contact-card";
-import { OutreachSection } from "@/components/outreach-section";
+import { RevenueCapturePackageSection } from "@/components/revenue-capture-package";
 import { formatCurrency } from "@/lib/format";
 import { formatAgentStatus, statusStylesLight } from "@/lib/agents";
 
@@ -171,17 +170,15 @@ export function PropertyDetailDrawer({
                 )}
               </section>
 
-              {detail.decisionMaker && (
-                <ContactCard
-                  company={detail.decisionMaker.company}
-                  contactName={detail.decisionMaker.contactName}
-                  contactTitle={detail.decisionMaker.contactTitle}
-                  email={detail.decisionMaker.email}
-                  phone={detail.decisionMaker.phone}
-                />
-              )}
-
-              <OutreachSection />
+              <RevenueCapturePackageSection
+                opportunityId={opportunityId}
+                decisionMaker={detail.decisionMaker}
+                companyEnrichment={detail.companyEnrichment}
+                revenueCapturePackage={detail.revenueCapturePackage}
+                outreachAgent={detail.outreachAgent}
+                packageHistory={detail.packageHistory}
+                isPackageRunning={detail.isPackageRunning}
+              />
             </div>
           )}
         </div>

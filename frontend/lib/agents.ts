@@ -63,7 +63,8 @@ export const WORKFLOW_STEPS = [
   { id: "risk", label: "Risk Agent" },
   { id: "revenue", label: "Revenue Agent" },
   { id: "decision_maker", label: "Decision Maker Agent" },
-  { id: "outreach", label: "Outreach Agent" },
+  { id: "orange_slice_enrichment", label: "Orange Slice" },
+  { id: "outreach", label: "Outreach Package" },
   { id: "pipeline", label: "Pipeline" },
 ] as const;
 

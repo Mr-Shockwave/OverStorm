@@ -40,6 +40,38 @@ export const runDiscoveryWorkflow = internalAction({
         runId,
         result,
       });
+
+      try {
+        const { createOrangeSliceService } = await import("./services/orangeSlice");
+        const orangeSlice = createOrangeSliceService();
+        const enrichment = await orangeSlice.enrichCompany({
+          companyName: result.company,
+          location: context.storm.location,
+        });
+
+        await ctx.runMutation(internal.packageDb.saveCompanyEnrichment, {
+          opportunityId: args.opportunityId,
+          enrichment: {
+            companyName: enrichment.companyName,
+            companyDescription: enrichment.companyDescription,
+            employeeCount: enrichment.employeeCount,
+            companySize: enrichment.companySize,
+            industry: enrichment.industry,
+            headcountGrowth: enrichment.headcountGrowth,
+            recentEvents: enrichment.recentEvents,
+            locations: enrichment.locations,
+            website: enrichment.website,
+            domain: enrichment.domain,
+            linkedinCompanyUrl: enrichment.linkedinCompanyUrl,
+            enrichmentStatus: enrichment.enrichmentStatus,
+          },
+        });
+      } catch (error) {
+        console.warn(
+          "[discoveryWorkflow] Orange Slice enrichment failed:",
+          error instanceof Error ? error.message : error,
+        );
+      }
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Discovery workflow failed";

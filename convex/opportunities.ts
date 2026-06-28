@@ -53,7 +53,8 @@ export const getOpportunityDetail = query({
     const storm = await ctx.db.get(opportunity.stormId);
     if (!storm) return null;
 
-    const [decisionMakerRows, runs] = await Promise.all([
+    const [decisionMakerRows, runs, enrichmentRows, packageRows] =
+      await Promise.all([
       ctx.db
         .query("decisionMakers")
         .withIndex("by_opportunity", (q) =>
@@ -66,11 +67,25 @@ export const getOpportunityDetail = query({
           q.eq("opportunityId", args.opportunityId),
         )
         .collect(),
+      ctx.db
+        .query("companyEnrichments")
+        .withIndex("by_opportunity", (q) =>
+          q.eq("opportunityId", args.opportunityId),
+        )
+        .collect(),
+      ctx.db
+        .query("revenueCapturePackages")
+        .withIndex("by_opportunity", (q) =>
+          q.eq("opportunityId", args.opportunityId),
+        )
+        .collect(),
     ]);
 
     const sortedRuns = [...runs].sort((a, b) => b.startedAt - a.startedAt);
-    const latestRun =
-      sortedRuns.find((run) => run.runKind === "discovery") ?? sortedRuns[0] ?? null;
+    const latestDiscoveryRun =
+      sortedRuns.find((run) => run.runKind === "discovery") ?? null;
+    const latestPackageRun =
+      sortedRuns.find((run) => run.runKind === "package") ?? null;
 
     let decisionMakerAgent: {
       status: string;
@@ -83,11 +98,11 @@ export const getOpportunityDetail = query({
       } | null;
     } | null = null;
 
-    if (latestRun) {
+    if (latestDiscoveryRun) {
       const agentResult = await ctx.db
         .query("agentResults")
         .withIndex("by_run_and_type", (q) =>
-          q.eq("runId", latestRun._id).eq("agentType", "decision_maker"),
+          q.eq("runId", latestDiscoveryRun._id).eq("agentType", "decision_maker"),
         )
         .unique();
 
@@ -124,9 +139,50 @@ export const getOpportunityDetail = query({
             phone: decisionMakerAgent.output.phone,
             linkedinUrl: undefined,
             source: "manual" as const,
-            discoveredAt: latestRun?.completedAt ?? latestRun?.startedAt ?? Date.now(),
+            discoveredAt: latestDiscoveryRun?.completedAt ?? latestDiscoveryRun?.startedAt ?? Date.now(),
           }
         : null;
+
+    let outreachAgent: {
+      status: string;
+      startedAt?: number;
+      completedAt?: number;
+      errorMessage?: string;
+    } | null = null;
+
+    if (latestPackageRun) {
+      const agentResult = await ctx.db
+        .query("agentResults")
+        .withIndex("by_run_and_type", (q) =>
+          q.eq("runId", latestPackageRun._id).eq("agentType", "outreach"),
+        )
+        .unique();
+
+      if (agentResult) {
+        outreachAgent = {
+          status: agentResult.status,
+          startedAt: agentResult.startedAt,
+          completedAt: agentResult.completedAt,
+          errorMessage: agentResult.errorMessage,
+        };
+      }
+    }
+
+    const companyEnrichment =
+      [...enrichmentRows].sort((a, b) => b.enrichedAt - a.enrichedAt)[0] ?? null;
+
+    const sortedPackages = [...packageRows].sort(
+      (a, b) => b.startedAt - a.startedAt,
+    );
+    const activePackage = sortedPackages[0] ?? null;
+    const packageHistory = sortedPackages.slice(0, 5).map((pkg) => ({
+      _id: pkg._id,
+      status: pkg.status,
+      workflowLabel: pkg.workflowLabel,
+      startedAt: pkg.startedAt,
+      completedAt: pkg.completedAt,
+      limitedIntelligence: pkg.limitedIntelligence,
+    }));
 
     const riskExplanation =
       opportunity.riskExplanation ??
@@ -170,7 +226,48 @@ export const getOpportunityDetail = query({
             errorMessage: decisionMakerAgent.errorMessage,
           }
         : null,
+      outreachAgent,
+      companyEnrichment: companyEnrichment
+        ? {
+            companyName: companyEnrichment.companyName,
+            companyDescription: companyEnrichment.companyDescription,
+            employeeCount: companyEnrichment.employeeCount,
+            companySize: companyEnrichment.companySize,
+            industry: companyEnrichment.industry,
+            headcountGrowth: companyEnrichment.headcountGrowth,
+            recentEvents: companyEnrichment.recentEvents,
+            locations: companyEnrichment.locations,
+            website: companyEnrichment.website,
+            domain: companyEnrichment.domain,
+            linkedinCompanyUrl: companyEnrichment.linkedinCompanyUrl,
+            enrichmentStatus: companyEnrichment.enrichmentStatus,
+            enrichedAt: companyEnrichment.enrichedAt,
+          }
+        : null,
+      revenueCapturePackage: activePackage
+        ? {
+            _id: activePackage._id,
+            status: activePackage.status,
+            workflowLabel: activePackage.workflowLabel,
+            limitedIntelligence: activePackage.limitedIntelligence,
+            executiveSummary: activePackage.executiveSummary,
+            personalizedEmail: activePackage.personalizedEmail,
+            linkedinMessage: activePackage.linkedinMessage,
+            callScript: activePackage.callScript,
+            aiReasoning: activePackage.aiReasoning,
+            startedAt: activePackage.startedAt,
+            completedAt: activePackage.completedAt,
+            errorMessage: activePackage.errorMessage,
+          }
+        : null,
+      packageHistory,
       isDiscoveryRunning: decisionMakerAgent?.status === "running",
+      isPackageRunning:
+        outreachAgent?.status === "running" ||
+        (activePackage?.status !== "completed" &&
+          activePackage?.status !== "failed" &&
+          activePackage?.status !== undefined &&
+          activePackage?.status !== "pending"),
     };
   },
 });
@@ -209,6 +306,51 @@ export const startDiscovery = mutation({
     }
 
     await ctx.scheduler.runAfter(0, internal.discoveryWorkflow.runDiscoveryWorkflow, {
+      opportunityId: args.opportunityId,
+    });
+
+    return { started: true };
+  },
+});
+
+export const startPackageGeneration = mutation({
+  args: { opportunityId: v.id("opportunities") },
+  handler: async (ctx, args) => {
+    const opportunity = await ctx.db.get(args.opportunityId);
+    if (!opportunity) {
+      throw new Error("Opportunity not found");
+    }
+
+    const decisionMaker = await ctx.db
+      .query("decisionMakers")
+      .withIndex("by_opportunity", (q) =>
+        q.eq("opportunityId", args.opportunityId),
+      )
+      .first();
+
+    if (!decisionMaker) {
+      throw new Error("Run Fiber discovery first to identify a decision maker");
+    }
+
+    const packages = await ctx.db
+      .query("revenueCapturePackages")
+      .withIndex("by_opportunity", (q) =>
+        q.eq("opportunityId", args.opportunityId),
+      )
+      .collect();
+
+    const running = packages.find(
+      (pkg) =>
+        pkg.status !== "completed" &&
+        pkg.status !== "failed" &&
+        pkg.status !== "pending",
+    );
+
+    if (running) {
+      throw new Error("Package generation is already in progress");
+    }
+
+    await ctx.scheduler.runAfter(0, internal.packageWorkflow.runPackageWorkflow, {
       opportunityId: args.opportunityId,
     });
 

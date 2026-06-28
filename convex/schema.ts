@@ -41,6 +41,7 @@ export const agentRunStatus = v.union(
 export const agentRunKind = v.union(
   v.literal("full"),
   v.literal("discovery"),
+  v.literal("package"),
 );
 
 export const workflowStep = v.union(
@@ -48,10 +49,49 @@ export const workflowStep = v.union(
   v.literal("risk"),
   v.literal("revenue"),
   v.literal("decision_maker"),
+  v.literal("orange_slice_enrichment"),
   v.literal("outreach"),
   v.literal("pipeline"),
   v.literal("completed"),
 );
+
+export const packageWorkflowStatus = v.union(
+  v.literal("pending"),
+  v.literal("analyzing_company"),
+  v.literal("checking_signals"),
+  v.literal("building_strategy"),
+  v.literal("generating_package"),
+  v.literal("completed"),
+  v.literal("failed"),
+);
+
+export const enrichmentStatus = v.union(
+  v.literal("full"),
+  v.literal("limited"),
+);
+
+export const companyEnrichmentFields = v.object({
+  companyName: v.string(),
+  companyDescription: v.optional(v.string()),
+  employeeCount: v.optional(v.number()),
+  companySize: v.optional(v.string()),
+  industry: v.optional(v.string()),
+  headcountGrowth: v.optional(v.string()),
+  recentEvents: v.optional(v.array(v.string())),
+  locations: v.optional(v.array(v.string())),
+  website: v.optional(v.string()),
+  domain: v.optional(v.string()),
+  linkedinCompanyUrl: v.optional(v.string()),
+  enrichmentStatus: enrichmentStatus,
+});
+
+export const revenueCapturePackageContent = v.object({
+  executiveSummary: v.string(),
+  personalizedEmail: v.string(),
+  linkedinMessage: v.string(),
+  callScript: v.string(),
+  aiReasoning: v.string(),
+});
 
 export const agentOutput = v.object({
   riskScore: v.optional(v.number()),
@@ -157,4 +197,39 @@ export default defineSchema({
     source: v.union(v.literal("fiber"), v.literal("manual")),
     discoveredAt: v.number(),
   }).index("by_opportunity", ["opportunityId"]),
+
+  companyEnrichments: defineTable({
+    opportunityId: v.id("opportunities"),
+    companyName: v.string(),
+    companyDescription: v.optional(v.string()),
+    employeeCount: v.optional(v.number()),
+    companySize: v.optional(v.string()),
+    industry: v.optional(v.string()),
+    headcountGrowth: v.optional(v.string()),
+    recentEvents: v.optional(v.array(v.string())),
+    locations: v.optional(v.array(v.string())),
+    website: v.optional(v.string()),
+    domain: v.optional(v.string()),
+    linkedinCompanyUrl: v.optional(v.string()),
+    enrichmentStatus: enrichmentStatus,
+    enrichedAt: v.number(),
+  }).index("by_opportunity", ["opportunityId"]),
+
+  revenueCapturePackages: defineTable({
+    opportunityId: v.id("opportunities"),
+    runId: v.id("agentRuns"),
+    status: packageWorkflowStatus,
+    workflowLabel: v.string(),
+    limitedIntelligence: v.boolean(),
+    executiveSummary: v.optional(v.string()),
+    personalizedEmail: v.optional(v.string()),
+    linkedinMessage: v.optional(v.string()),
+    callScript: v.optional(v.string()),
+    aiReasoning: v.optional(v.string()),
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+    errorMessage: v.optional(v.string()),
+  })
+    .index("by_opportunity", ["opportunityId"])
+    .index("by_opportunity_and_started", ["opportunityId", "startedAt"]),
 });
