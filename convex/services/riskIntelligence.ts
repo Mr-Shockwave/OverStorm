@@ -117,11 +117,11 @@ export function buildWhyAtRisk(input: {
 
   if (input.breakdown.stormPathProximity >= 88) {
     parts.push(
-      "Storm-path proximity is high for this replay: Hurricane Milton's South Florida wind field and Gulf spillover elevate regional impact probability.",
+      "Storm-path proximity is high for this replay: Hurricane Wilma's eye crossed Miami-Dade — Collins Ave corridor sat inside the core wind field.",
     );
   } else if (input.breakdown.stormPathProximity >= 75) {
     parts.push(
-      "Regional storm-path proximity places this asset inside Milton's South Florida impact envelope for wind, rain, and secondary surge effects.",
+      "Regional storm-path proximity places this asset inside Wilma's South Florida transect for wind, rain, and surge effects.",
     );
   }
 

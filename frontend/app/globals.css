@@ -45,7 +45,19 @@ body {
   color: #e2e8f0 !important;
 }
 
-/* Animated storm track */
+/* Animated storm track — replay draw */
+.storm-track-line--replay {
+  stroke-dasharray: 2400;
+  stroke-dashoffset: 2400;
+  animation: storm-track-draw 2s ease-out forwards, storm-dash 2.5s linear 2s infinite;
+}
+
+@keyframes storm-track-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
 .storm-track-line {
   animation: storm-dash 2.5s linear infinite;
 }
@@ -188,19 +200,74 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 2px;
+  opacity: 0.55;
+  transform: scale(0.92);
+  transition:
+    opacity 0.5s ease,
+    transform 0.5s ease;
+}
+
+.property-marker--highlight {
+  opacity: 1;
+  transform: scale(1);
+  animation: marker-reveal 0.6s ease-out both;
+  animation-delay: var(--marker-delay, 0s);
+}
+
+@keyframes marker-reveal {
+  from {
+    opacity: 0.3;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.property-marker__type {
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #cbd5e1;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(71, 85, 105, 0.6);
+  white-space: nowrap;
+}
+
+.property-marker__row {
+  display: flex;
+  align-items: center;
   gap: 4px;
 }
 
+.property-marker__risk {
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #fef2f2;
+  background: rgba(127, 29, 29, 0.95);
+  border: 1px solid rgba(248, 113, 113, 0.5);
+}
+
 .property-marker__dot {
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   border: 2px solid white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 .property-marker--high .property-marker__dot {
+  width: 12px;
+  height: 12px;
   background: #ef4444;
   box-shadow: 0 0 12px rgba(239, 68, 68, 0.7);
-  animation: marker-pulse-high 2.5s ease-in-out infinite;
 }
 
 .property-marker--medium .property-marker__dot {
@@ -213,9 +280,9 @@ body {
 }
 
 .property-marker__revenue {
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.02em;
   color: #ecfdf5;
@@ -225,10 +292,16 @@ body {
 }
 
 .property-marker--high .property-marker__revenue {
-  font-size: 11px;
-  background: rgba(127, 29, 29, 0.9);
-  border-color: rgba(248, 113, 113, 0.4);
-  color: #fef2f2;
+  background: rgba(6, 78, 59, 0.95);
+  color: #a7f3d0;
+}
+
+.property-marker--high.property-marker--highlight .property-marker__dot {
+  animation: marker-pulse-high 2.5s ease-in-out infinite;
+}
+
+.risk-zone--expanding {
+  transition: fill-opacity 0.3s ease;
 }
 
 @keyframes marker-pulse-high {

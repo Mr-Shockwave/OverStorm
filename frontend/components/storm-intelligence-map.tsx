@@ -30,12 +30,14 @@ type StormIntelligenceMapProps = {
 };
 
 export function StormIntelligenceMap(props: StormIntelligenceMapProps) {
+  const replayKey = `${props.map.stormTrack.length}-${props.map.opportunities.length}`;
+
   return (
     <section
       aria-label="Storm intelligence map"
       className="h-full w-full overflow-hidden border-b border-slate-800 bg-slate-950"
     >
-      <StormMapInner {...props} />
+      <StormMapInner key={replayKey} {...props} />
     </section>
   );
 }

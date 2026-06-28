@@ -28,13 +28,13 @@ Each factor is scored 0–100 based on asset geography, storm replay context, an
 | Coastal Exposure | Atlantic barrier-island position, Collins Ave oceanfront vs bay-side |
 | Flood Zone Severity | Miami-Dade coastal AE surge mapping references (public FEMA zone context — not a FEMA score) |
 | Elevation Risk | Barrier island elevation (~3–10 ft), surge inundation susceptibility |
-| Storm Path Proximity | Hurricane Milton (2024) historical replay — South Florida regional impact envelope |
+| Storm Path Proximity | Hurricane Wilma (2005) historical replay — eye crossed Miami-Dade transect |
 | Asset Vulnerability | Building year, hospitality footprint, asset type (resort vs hotel) |
 
 ### Assumptions
 
 - Scores are static for the Miami Beach demo asset set (`convex/assetData.ts`).
-- Milton replay uses October 2024 historical track — no live weather APIs.
+- Wilma replay uses October 2005 historical track — no live weather APIs.
 - Component scores are analyst-calibrated to reflect known coastal geography, not field inspections.
 
 ### Implementation

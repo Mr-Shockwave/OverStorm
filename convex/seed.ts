@@ -1,9 +1,9 @@
 import { mutation } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import {
-  HURRICANE_MILTON_HISTORICAL,
+  HURRICANE_WILMA_HISTORICAL,
   MIAMI_BEACH_CENTER,
-  MIAMI_BEACH_RISK_ZONES,
+  WILMA_RISK_ZONES,
   MIAMI_COASTAL_ASSETS,
 } from "./assetData";
 import { REVENUE_BASE_SCALE } from "./services/riskIntelligence";
@@ -45,23 +45,23 @@ function opportunityFromAsset(
 
 function buildStormRecord(updatedAt: number) {
   return {
-    name: HURRICANE_MILTON_HISTORICAL.name,
-    location: HURRICANE_MILTON_HISTORICAL.location,
-    riskScore: HURRICANE_MILTON_HISTORICAL.riskScore,
-    hoursUntilLandfall: HURRICANE_MILTON_HISTORICAL.hoursUntilLandfall,
-    expectedRevenueImpact: HURRICANE_MILTON_HISTORICAL.expectedRevenueImpact,
+    name: HURRICANE_WILMA_HISTORICAL.name,
+    location: HURRICANE_WILMA_HISTORICAL.location,
+    riskScore: HURRICANE_WILMA_HISTORICAL.riskScore,
+    hoursUntilLandfall: HURRICANE_WILMA_HISTORICAL.hoursUntilLandfall,
+    expectedRevenueImpact: HURRICANE_WILMA_HISTORICAL.expectedRevenueImpact,
     status: "active" as const,
     updatedAt,
     mapCenterLat: MIAMI_BEACH_CENTER.lat,
     mapCenterLng: MIAMI_BEACH_CENTER.lng,
     mapZoom: MIAMI_BEACH_CENTER.zoom,
-    stormTrack: [...HURRICANE_MILTON_HISTORICAL.stormTrack],
-    riskZones: [...MIAMI_BEACH_RISK_ZONES],
-    category: HURRICANE_MILTON_HISTORICAL.category,
-    historicalLandfall: HURRICANE_MILTON_HISTORICAL.historicalLandfall,
-    landfallWindSpeedMph: HURRICANE_MILTON_HISTORICAL.landfallWindSpeedMph,
-    isHistoricalReplay: HURRICANE_MILTON_HISTORICAL.isHistoricalReplay,
-    stormTimeline: [...HURRICANE_MILTON_HISTORICAL.timeline],
+    stormTrack: [...HURRICANE_WILMA_HISTORICAL.stormTrack],
+    riskZones: [...WILMA_RISK_ZONES],
+    category: HURRICANE_WILMA_HISTORICAL.category,
+    historicalLandfall: HURRICANE_WILMA_HISTORICAL.historicalLandfall,
+    landfallWindSpeedMph: HURRICANE_WILMA_HISTORICAL.landfallWindSpeedMph,
+    isHistoricalReplay: HURRICANE_WILMA_HISTORICAL.isHistoricalReplay,
+    stormTimeline: [...HURRICANE_WILMA_HISTORICAL.timeline],
   };
 }
 
@@ -131,11 +131,11 @@ export const seedDashboard = mutation({
         outreach: {
           emailDraftReady: true,
           emailDraft:
-            "Subject: Proactive Storm Preparedness — Fontainebleau Miami Beach\n\nDear John,\n\nReviewing Hurricane Milton's historical impact on South Florida, we wanted to reach out regarding disaster recovery capabilities for Fontainebleau Miami Beach.\n\nOur team specializes in pre-positioned hospitality restoration. We would welcome a brief call to discuss contingency planning.\n\nBest regards,\nOverStorm Recovery Team",
+            "Subject: Proactive Storm Preparedness — Fontainebleau Miami Beach\n\nDear John,\n\nReviewing Hurricane Wilma's historical impact on South Florida, we wanted to reach out regarding disaster recovery capabilities for Fontainebleau Miami Beach.\n\nOur team specializes in pre-positioned hospitality restoration. We would welcome a brief call to discuss contingency planning.\n\nBest regards,\nOverStorm Recovery Team",
           outreachRecommendation:
-            "Send personalized email referencing Milton historical replay and coastal exposure profile.",
+            "Send personalized email referencing Wilma historical replay and coastal exposure profile.",
           openAiOutreachRecommendation:
-            "Send personalized email referencing Milton historical replay and coastal exposure profile.",
+            "Send personalized email referencing Wilma historical replay and coastal exposure profile.",
         },
       };
 
@@ -180,7 +180,7 @@ export const seedDashboard = mutation({
         stormId,
         opportunityId: topOpportunityId,
         propertyName: topAsset.propertyName,
-        stormName: HURRICANE_MILTON_HISTORICAL.name,
+        stormName: HURRICANE_WILMA_HISTORICAL.name,
         summary: topAsset.revenueExplanation,
         completedAt: now - 3500_000,
         snapshot: {
@@ -265,11 +265,11 @@ export const seedAgentDemo = mutation({
       outreach: {
         emailDraftReady: true,
         emailDraft:
-          "Subject: Proactive Storm Preparedness\n\nDear John,\n\nReviewing Hurricane Milton's historical impact on South Florida, we wanted to reach out regarding disaster recovery capabilities.\n\nBest regards,\nOverStorm Recovery Team",
+          "Subject: Proactive Storm Preparedness\n\nDear John,\n\nReviewing Hurricane Wilma's historical impact on South Florida, we wanted to reach out regarding disaster recovery capabilities.\n\nBest regards,\nOverStorm Recovery Team",
         outreachRecommendation:
-          "Send personalized email referencing Milton historical replay and coastal exposure.",
+          "Send personalized email referencing Wilma historical replay and coastal exposure.",
         openAiOutreachRecommendation:
-          "Send personalized email referencing Milton historical replay and coastal exposure.",
+          "Send personalized email referencing Wilma historical replay and coastal exposure.",
       },
     };
 
@@ -401,20 +401,46 @@ export const patchRealAssets = mutation({
   },
 });
 
-/** Update geodata, phones, and Fiber tuning fields without replacing opportunities. */
+/** Sync assets, storm replay data, and insert any missing coastal properties. */
 export const syncCoastalAssetMetadata = mutation({
   args: {},
   handler: async (ctx) => {
+    const storms = await ctx.db.query("storms").collect();
+    const now = Date.now();
+
+    for (const storm of storms) {
+      await ctx.db.patch(storm._id, {
+        name: HURRICANE_WILMA_HISTORICAL.name,
+        location: HURRICANE_WILMA_HISTORICAL.location,
+        riskScore: HURRICANE_WILMA_HISTORICAL.riskScore,
+        expectedRevenueImpact: HURRICANE_WILMA_HISTORICAL.expectedRevenueImpact,
+        mapCenterLat: MIAMI_BEACH_CENTER.lat,
+        mapCenterLng: MIAMI_BEACH_CENTER.lng,
+        mapZoom: MIAMI_BEACH_CENTER.zoom,
+        stormTrack: [...HURRICANE_WILMA_HISTORICAL.stormTrack],
+        riskZones: [...WILMA_RISK_ZONES],
+        category: HURRICANE_WILMA_HISTORICAL.category,
+        historicalLandfall: HURRICANE_WILMA_HISTORICAL.historicalLandfall,
+        landfallWindSpeedMph: HURRICANE_WILMA_HISTORICAL.landfallWindSpeedMph,
+        isHistoricalReplay: HURRICANE_WILMA_HISTORICAL.isHistoricalReplay,
+        stormTimeline: [...HURRICANE_WILMA_HISTORICAL.timeline],
+        updatedAt: now,
+      });
+    }
+
+    const activeStorm =
+      storms.find((storm) => storm.status === "active") ?? storms[0];
+
     const opportunities = await ctx.db.query("opportunities").collect();
     let updated = 0;
+    let inserted = 0;
 
     for (const asset of MIAMI_COASTAL_ASSETS) {
       const match = opportunities.find(
         (row) => row.propertyName === asset.propertyName,
       );
-      if (!match) continue;
 
-      await ctx.db.patch(match._id, {
+      const fields = {
         latitude: asset.latitude,
         longitude: asset.longitude,
         address: asset.address,
@@ -422,6 +448,9 @@ export const syncCoastalAssetMetadata = mutation({
         searchAliases: asset.searchAliases,
         excludedEmployerPatterns: asset.excludedEmployerPatterns,
         requiredEmployerTokens: asset.requiredEmployerTokens,
+        assetType: asset.assetType,
+        city: asset.city,
+        priorityRank: asset.priorityRank,
         riskScore: asset.riskScore,
         restorationDemandScore: asset.restorationDemandScore,
         expectedRevenue: asset.expectedRevenue,
@@ -434,11 +463,30 @@ export const syncCoastalAssetMetadata = mutation({
           repairComplexityFactor: asset.repairComplexityFactor,
           baseScale: REVENUE_BASE_SCALE,
         },
-      });
-      updated += 1;
+      };
+
+      if (match) {
+        await ctx.db.patch(match._id, fields);
+        updated += 1;
+      } else if (activeStorm) {
+        await ctx.db.insert("opportunities", {
+          stormId: activeStorm._id,
+          propertyName: asset.propertyName,
+          status: asset.status,
+          buildingYear: asset.buildingYear,
+          propertyNotes: asset.propertyNotes,
+          ...fields,
+        });
+        inserted += 1;
+      }
     }
 
-    return { updated, total: MIAMI_COASTAL_ASSETS.length };
+    return {
+      updated,
+      inserted,
+      stormsUpdated: storms.length,
+      total: MIAMI_COASTAL_ASSETS.length,
+    };
   },
 });
 

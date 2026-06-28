@@ -1,8 +1,8 @@
 import { query } from "./_generated/server";
 import {
-  HURRICANE_MILTON_HISTORICAL,
+  HURRICANE_WILMA_HISTORICAL,
   MIAMI_BEACH_CENTER,
-  MIAMI_BEACH_RISK_ZONES,
+  WILMA_RISK_ZONES,
 } from "./assetData";
 
 export const getDashboard = query({
@@ -80,7 +80,24 @@ export const getDashboard = query({
     const stormTimeline =
       activeStorm.stormTimeline && activeStorm.stormTimeline.length > 0
         ? activeStorm.stormTimeline
-        : [...HURRICANE_MILTON_HISTORICAL.timeline];
+        : [...HURRICANE_WILMA_HISTORICAL.timeline];
+
+    const trackedPredictedRevenue = mapOpportunities.reduce(
+      (sum, opportunity) => sum + opportunity.expectedRevenue,
+      0,
+    );
+    const highRiskAssetCount = mapOpportunities.filter(
+      (opportunity) => opportunity.riskScore >= 85,
+    ).length;
+    const avgRestorationDemand =
+      mapOpportunities.length > 0
+        ? Math.round(
+            mapOpportunities.reduce(
+              (sum, opportunity) => sum + opportunity.restorationDemandScore,
+              0,
+            ) / mapOpportunities.length,
+          )
+        : 0;
 
     return {
       activeStormCount: activeStorms.length,
@@ -93,16 +110,16 @@ export const getDashboard = query({
         hoursUntilLandfall: activeStorm.hoursUntilLandfall,
         expectedRevenueImpact: activeStorm.expectedRevenueImpact,
         category:
-          activeStorm.category ?? HURRICANE_MILTON_HISTORICAL.category,
+          activeStorm.category ?? HURRICANE_WILMA_HISTORICAL.category,
         historicalLandfall:
           activeStorm.historicalLandfall ??
-          HURRICANE_MILTON_HISTORICAL.historicalLandfall,
+          HURRICANE_WILMA_HISTORICAL.historicalLandfall,
         landfallWindSpeedMph:
           activeStorm.landfallWindSpeedMph ??
-          HURRICANE_MILTON_HISTORICAL.landfallWindSpeedMph,
+          HURRICANE_WILMA_HISTORICAL.landfallWindSpeedMph,
         isHistoricalReplay:
           activeStorm.isHistoricalReplay ??
-          HURRICANE_MILTON_HISTORICAL.isHistoricalReplay,
+          HURRICANE_WILMA_HISTORICAL.isHistoricalReplay,
         stormTimeline,
       },
       opportunities: topOpportunities.map((opportunity) => ({
@@ -128,7 +145,10 @@ export const getDashboard = query({
       metrics: pipeline
         ? {
             predictedRevenueOpportunity: activeStorm.expectedRevenueImpact,
+            trackedPredictedRevenue,
             propertiesAtRisk: pipeline.found,
+            highRiskAssetCount,
+            avgRestorationDemand,
           }
         : null,
       map: {
@@ -140,25 +160,32 @@ export const getDashboard = query({
         stormTrack:
           activeStorm.stormTrack && activeStorm.stormTrack.length > 0
             ? activeStorm.stormTrack
-            : [...HURRICANE_MILTON_HISTORICAL.stormTrack],
+            : [...HURRICANE_WILMA_HISTORICAL.stormTrack],
         riskZones:
           activeStorm.riskZones && activeStorm.riskZones.length > 0
             ? activeStorm.riskZones
-            : [...MIAMI_BEACH_RISK_ZONES],
+            : [...WILMA_RISK_ZONES],
         opportunities: mapOpportunities,
         storm: {
           category:
-            activeStorm.category ?? HURRICANE_MILTON_HISTORICAL.category,
+            activeStorm.category ?? HURRICANE_WILMA_HISTORICAL.category,
+          peakCategory: HURRICANE_WILMA_HISTORICAL.peakCategory,
           historicalLandfall:
             activeStorm.historicalLandfall ??
-            HURRICANE_MILTON_HISTORICAL.historicalLandfall,
+            HURRICANE_WILMA_HISTORICAL.historicalLandfall,
           landfallWindSpeedMph:
             activeStorm.landfallWindSpeedMph ??
-            HURRICANE_MILTON_HISTORICAL.landfallWindSpeedMph,
+            HURRICANE_WILMA_HISTORICAL.landfallWindSpeedMph,
+          peakWindSpeedMph: HURRICANE_WILMA_HISTORICAL.peakWindSpeedMph,
           isHistoricalReplay:
             activeStorm.isHistoricalReplay ??
-            HURRICANE_MILTON_HISTORICAL.isHistoricalReplay,
+            HURRICANE_WILMA_HISTORICAL.isHistoricalReplay,
           timeline: stormTimeline,
+        },
+        narrative: {
+          highRiskAssetCount,
+          avgRestorationDemand,
+          trackedPredictedRevenue,
         },
       },
     };
