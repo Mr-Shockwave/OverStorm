@@ -9,22 +9,22 @@ OverStorm is split across two hosts:
 
 ## Vercel setup (required)
 
-The Next.js app lives in **`frontend/`**, but it imports types from **`convex/_generated`** at the repo root.
+The Next.js app lives in **`frontend/`**, but imports **`convex/_generated`** from the repo root.
 
-### Option A — deploy from repo root (recommended)
+### Project settings
 
-1. Vercel Dashboard → **Settings → General**
-2. **Root Directory** → leave **empty** (clear it if set to `frontend`)
-3. Repo-root `vercel.json` handles install/build inside `frontend/`
-4. Add **`NEXT_PUBLIC_CONVEX_URL`** (see below)
+1. **Settings → General → Root Directory** → **`frontend`**
+2. Enable **Include source files outside of the Root Directory in the Build Step**
+3. **Framework Preset** → **Next.js**
+4. **Settings → Environment Variables** → add `NEXT_PUBLIC_CONVEX_URL` (see below)
 5. **Redeploy**
 
-### Option B — Root Directory = `frontend`
+`frontend/vercel.json` already configures:
 
-1. Set **Root Directory** to **`frontend`**
-2. Enable **Include source files outside of the Root Directory in the Build Step**
-3. Add **`NEXT_PUBLIC_CONVEX_URL`**
-4. Redeploy
+- **Install:** `npm install --prefix .. && npm install` (installs `convex` at repo root + frontend deps)
+- **Build:** `npm run build`
+
+`frontend/next.config.ts` aliases `convex/server` and `convex/react` to `frontend/node_modules/convex` so Turbopack can bundle repo-root `convex/_generated/api.js`.
 
 ## Environment variables
 
