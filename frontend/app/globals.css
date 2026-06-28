@@ -18,31 +18,31 @@ body {
   color: var(--foreground);
 }
 
-/* Storm map — CARTO Dark Matter tiles with dark fallback while loading */
+/* Storm map — CARTO light tiles */
 .storm-map.leaflet-container {
-  background: #0f172a;
+  background: #e2e8f0;
   font-family: inherit;
 }
 
 .storm-map .leaflet-control-zoom {
-  border: 1px solid rgba(51, 65, 85, 0.8) !important;
+  border: 1px solid rgba(203, 213, 225, 0.9) !important;
   border-radius: 0.5rem !important;
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
 }
 
 .storm-map .leaflet-control-zoom a {
-  background: rgba(15, 23, 42, 0.92) !important;
-  color: #94a3b8 !important;
-  border-bottom-color: rgba(51, 65, 85, 0.6) !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  color: #475569 !important;
+  border-bottom-color: rgba(226, 232, 240, 0.9) !important;
   width: 32px !important;
   height: 32px !important;
   line-height: 32px !important;
 }
 
 .storm-map .leaflet-control-zoom a:hover {
-  background: rgba(30, 41, 59, 0.95) !important;
-  color: #e2e8f0 !important;
+  background: rgba(248, 250, 252, 1) !important;
+  color: #0f172a !important;
 }
 
 /* Animated storm track — replay draw */

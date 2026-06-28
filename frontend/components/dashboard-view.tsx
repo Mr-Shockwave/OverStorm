@@ -38,8 +38,8 @@ export function DashboardView() {
 
   return (
     <AppShell>
-      <main className="flex min-h-[calc(100vh-4.25rem)] flex-col">
-        <div className="h-[min(58vh,calc(100vh-4.25rem-12rem))] min-h-[380px] shrink-0">
+      <main className="flex min-h-[calc(100vh-4.25rem)] flex-col lg:flex-row">
+        <div className="min-h-[380px] flex-1 lg:min-h-0">
           <StormIntelligenceMap
             stormName={dashboard.activeStorm.name}
             stormLocation={dashboard.activeStorm.location}
@@ -51,14 +51,15 @@ export function DashboardView() {
           />
         </div>
 
-        <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
-          <div className="grid gap-6 lg:grid-cols-2">
+        <aside className="flex w-full shrink-0 flex-col gap-4 border-t border-slate-200 bg-slate-50/50 p-4 lg:w-[380px] lg:border-t-0 lg:border-l">
+          <PipelineSummaryCard pipeline={dashboard.pipeline} />
+          <div className="min-h-0 flex-1 overflow-hidden">
             <RevenueOpportunitiesTable
               opportunities={dashboard.opportunities}
+              compact
             />
-            <PipelineSummaryCard pipeline={dashboard.pipeline} />
           </div>
-        </div>
+        </aside>
       </main>
     </AppShell>
   );
@@ -66,14 +67,12 @@ export function DashboardView() {
 
 function DashboardLoading() {
   return (
-    <main className="flex min-h-[calc(100vh-4.25rem)] flex-col">
-      <div className="h-[min(58vh,calc(100vh-4.25rem-12rem))] min-h-[380px] animate-pulse bg-slate-900" />
-      <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
-        <div className="grid gap-6 lg:grid-cols-2">
-          <div className="h-64 animate-pulse rounded-xl bg-slate-200/70" />
-          <div className="h-40 animate-pulse rounded-xl bg-slate-200/70" />
-        </div>
-      </div>
+    <main className="flex min-h-[calc(100vh-4.25rem)] flex-col lg:flex-row">
+      <div className="min-h-[380px] flex-1 animate-pulse bg-slate-200" />
+      <aside className="w-full space-y-4 border-t border-slate-200 p-4 lg:w-[380px] lg:border-t-0 lg:border-l">
+        <div className="h-36 animate-pulse rounded-xl bg-slate-200/70" />
+        <div className="h-64 animate-pulse rounded-xl bg-slate-200/70" />
+      </aside>
     </main>
   );
 }

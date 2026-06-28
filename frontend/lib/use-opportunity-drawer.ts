@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
 import type { Id } from "../../convex/_generated/dataModel";
 
-const AGENTS_PATH = "/agents";
+const OPPORTUNITIES_PATH = "/opportunities";
 
 export function useOpportunityDrawer() {
   const searchParams = useSearchParams();
@@ -16,7 +16,7 @@ export function useOpportunityDrawer() {
   const openOpportunity = useCallback(
     (id: Id<"opportunities">) => {
       setClickedId(id);
-      router.replace(`${AGENTS_PATH}?id=${id}`, { scroll: false });
+      router.replace(`${OPPORTUNITIES_PATH}?id=${id}`, { scroll: false });
     },
     [router],
   );
@@ -24,7 +24,7 @@ export function useOpportunityDrawer() {
   const closeDrawer = useCallback(() => {
     setClickedId(null);
     if (urlOpportunityId) {
-      router.replace(AGENTS_PATH, { scroll: false });
+      router.replace(OPPORTUNITIES_PATH, { scroll: false });
     }
   }, [router, urlOpportunityId]);
 
