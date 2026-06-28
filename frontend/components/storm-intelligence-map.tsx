@@ -24,8 +24,7 @@ const StormMapInner = dynamic(
 type StormIntelligenceMapProps = {
   stormName: string;
   stormLocation: string;
-  hoursUntilLandfall: number;
-  projectedRevenue: number;
+  predictedRevenueOpportunity: number;
   propertiesAtRisk: number;
   map: StormMapData;
 };

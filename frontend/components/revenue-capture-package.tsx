@@ -48,7 +48,11 @@ type PackageHistoryItem = {
 };
 
 type DecisionMaker = {
+  propertyName?: string;
   company: string;
+  matchedCompany?: string;
+  matchConfidence?: number;
+  verified?: boolean;
   contactName: string;
   contactTitle: string;
   email?: string;
@@ -63,9 +67,20 @@ type OutreachAgent = {
   errorMessage?: string;
 };
 
+type DiscoveryUnavailable = {
+  message: string;
+  visitLocation: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  bestCandidate?: string;
+  bestConfidence?: number;
+};
+
 type RevenueCapturePackageSectionProps = {
   opportunityId: Id<"opportunities">;
   decisionMaker: DecisionMaker | null;
+  discoveryUnavailable?: DiscoveryUnavailable | null;
   companyEnrichment: CompanyEnrichment | null;
   revenueCapturePackage: RevenueCapturePackage | null;
   outreachAgent: OutreachAgent | null;
@@ -76,6 +91,7 @@ type RevenueCapturePackageSectionProps = {
 export function RevenueCapturePackageSection({
   opportunityId,
   decisionMaker,
+  discoveryUnavailable,
   companyEnrichment,
   revenueCapturePackage,
   outreachAgent,
@@ -145,9 +161,16 @@ export function RevenueCapturePackageSection({
         )}
 
         {!decisionMaker ? (
-          <p className="text-sm text-slate-500">
-            Complete Fiber discovery to unlock package generation.
-          </p>
+          discoveryUnavailable ? (
+            <p className="text-sm text-slate-500">
+              Contact discovery did not find a verified operator. Package generation
+              requires an on-site visit or manual contact entry.
+            </p>
+          ) : (
+            <p className="text-sm text-slate-500">
+              Complete Fiber discovery to unlock package generation.
+            </p>
+          )
         ) : (
           <button
             type="button"
@@ -180,7 +203,7 @@ export function RevenueCapturePackageSection({
         )}
 
         {decisionMaker && (
-          <ContactSection contact={decisionMaker} />
+          <ContactSection contact={decisionMaker} deferContactReveal />
         )}
 
         {isComplete && pkg && (
@@ -239,11 +262,28 @@ export function RevenueCapturePackageSection({
   );
 }
 
-function ContactSection({ contact }: { contact: DecisionMaker }) {
+function ContactSection({
+  contact,
+  deferContactReveal,
+}: {
+  contact: DecisionMaker;
+  deferContactReveal?: boolean;
+}) {
   const fields = [
-    { label: "Company", value: contact.company },
+    contact.propertyName && {
+      label: "Map Asset",
+      value: contact.propertyName,
+    },
+    {
+      label: "Verified Operator",
+      value: contact.company,
+    },
     { label: "Name", value: contact.contactName },
     { label: "Title", value: contact.contactTitle },
+    contact.matchConfidence !== undefined && {
+      label: "Match Confidence",
+      value: `${Math.round(contact.matchConfidence * 100)}%`,
+    },
     contact.email && { label: "Email", value: contact.email, copyable: true },
     contact.phone && { label: "Phone", value: contact.phone, copyable: true },
     contact.linkedinUrl && {
@@ -259,7 +299,22 @@ function ContactSection({ contact }: { contact: DecisionMaker }) {
 
   return (
     <div className="rounded-lg border border-slate-200 px-4 py-4">
-      <h4 className="text-sm font-semibold text-slate-900">Contact</h4>
+      <div className="flex items-center justify-between gap-2">
+        <h4 className="text-sm font-semibold text-slate-900">Contact</h4>
+        {contact.verified && (
+          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
+            Verified
+          </span>
+        )}
+      </div>
+      <p className="mt-1 text-xs text-slate-500">
+        Decision maker matched to the map asset operator
+      </p>
+      {deferContactReveal && !contact.email && !contact.phone && contact.linkedinUrl && (
+        <p className="mt-2 text-xs text-slate-500">
+          Email and phone are revealed when you generate a revenue capture package.
+        </p>
+      )}
       <dl className="mt-3 space-y-2.5">
         {fields.map((field) => (
           <div key={field.label} className="flex items-start justify-between gap-3">

@@ -50,8 +50,12 @@ Generate a complete Revenue Capture Package. Respond ONLY with valid JSON:
   "personalizedEmail": "string (full email with subject line)",
   "linkedinMessage": "string (concise, under 300 chars)",
   "callScript": "string (opening + key talking points + close)",
-  "aiReasoning": "string (explain why this company matters, why this contact was chosen, and why outreach is urgent given the storm)"
-}`;
+  "aiReasoning": "string (explain why this company matters, why this contact was chosen, why outreach is urgent given the storm, and if company intelligence is available, how recent events like portfolio expansion, acquisitions, growth hiring, or operational scaling increase outreach priority)"
+}
+
+IMPORTANT:
+- Risk scores and revenue figures are OverStorm model predictions, NOT government data.
+- When recent company events are provided, explicitly connect them to outreach urgency in aiReasoning.`;
 
   const companyIntel = input.limitedIntelligence
     ? "Limited company intelligence available — rely on storm urgency and property data."
@@ -60,9 +64,10 @@ Generate a complete Revenue Capture Package. Respond ONLY with valid JSON:
         input.employeeCount && `Employees: ${input.employeeCount}`,
         input.companySize && `Size: ${input.companySize}`,
         input.industry && `Industry: ${input.industry}`,
-        input.headcountGrowth && `Headcount growth: ${input.headcountGrowth}`,
+        input.headcountGrowth &&
+          `Headcount growth: ${input.headcountGrowth} (growth hiring signal)`,
         input.recentEvents?.length &&
-          `Recent events: ${input.recentEvents.join("; ")}`,
+          `Recent company events (use in reasoning — connect to portfolio expansion, acquisitions, growth hiring, or operational scaling): ${input.recentEvents.join("; ")}`,
         input.locations?.length &&
           `Locations: ${input.locations.join("; ")}`,
       ]

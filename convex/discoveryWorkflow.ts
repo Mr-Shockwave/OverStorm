@@ -5,6 +5,7 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { createFiberService } from "./services/fiber";
+import { buildPropertyContext } from "./services/propertyContext";
 
 export const runDiscoveryWorkflow = internalAction({
   args: { opportunityId: v.id("opportunities") },
@@ -20,6 +21,11 @@ export const runDiscoveryWorkflow = internalAction({
         throw new Error("Opportunity context not found");
       }
 
+      const propertyContext = buildPropertyContext(
+        context.opportunity,
+        context.storm,
+      );
+
       runId = await ctx.runMutation(internal.opportunityDb.getOrCreateAgentRun, {
         opportunityId: args.opportunityId,
       });
@@ -30,48 +36,42 @@ export const runDiscoveryWorkflow = internalAction({
       });
 
       const fiber = createFiberService();
-      const result = await fiber.discoverDecisionMaker({
-        propertyName: context.opportunity.propertyName,
-        location: context.storm.location,
+      const outcome = await fiber.discoverDecisionMaker(propertyContext, {
+        revealContact: false,
+        onProgress: async (step, message) => {
+          if (!runId) return;
+          await ctx.runMutation(internal.opportunityDb.setDiscoveryProgress, {
+            runId,
+            step,
+            message,
+          });
+        },
       });
 
-      await ctx.runMutation(internal.opportunityDb.saveDecisionMaker, {
+      if (outcome.status === "found") {
+        await ctx.runMutation(internal.opportunityDb.saveDecisionMaker, {
+          opportunityId: args.opportunityId,
+          runId,
+          result: outcome.result,
+        });
+        return;
+      }
+
+      await ctx.runMutation(internal.opportunityDb.saveDiscoveryUnavailable, {
         opportunityId: args.opportunityId,
         runId,
-        result,
+        outcome: {
+          propertyName: outcome.propertyName,
+          city: outcome.city,
+          address: outcome.address,
+          latitude: outcome.latitude,
+          longitude: outcome.longitude,
+          message: outcome.message,
+          visitLocation: outcome.visitLocation,
+          bestCandidate: outcome.bestCandidate,
+          bestConfidence: outcome.bestConfidence,
+        },
       });
-
-      try {
-        const { createOrangeSliceService } = await import("./services/orangeSlice");
-        const orangeSlice = createOrangeSliceService();
-        const enrichment = await orangeSlice.enrichCompany({
-          companyName: result.company,
-          location: context.storm.location,
-        });
-
-        await ctx.runMutation(internal.packageDb.saveCompanyEnrichment, {
-          opportunityId: args.opportunityId,
-          enrichment: {
-            companyName: enrichment.companyName,
-            companyDescription: enrichment.companyDescription,
-            employeeCount: enrichment.employeeCount,
-            companySize: enrichment.companySize,
-            industry: enrichment.industry,
-            headcountGrowth: enrichment.headcountGrowth,
-            recentEvents: enrichment.recentEvents,
-            locations: enrichment.locations,
-            website: enrichment.website,
-            domain: enrichment.domain,
-            linkedinCompanyUrl: enrichment.linkedinCompanyUrl,
-            enrichmentStatus: enrichment.enrichmentStatus,
-          },
-        });
-      } catch (error) {
-        console.warn(
-          "[discoveryWorkflow] Orange Slice enrichment failed:",
-          error instanceof Error ? error.message : error,
-        );
-      }
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Discovery workflow failed";

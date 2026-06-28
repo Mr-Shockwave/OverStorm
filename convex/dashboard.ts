@@ -1,9 +1,9 @@
 import { query } from "./_generated/server";
 import {
-  HURRICANE_MILTON_TRACK,
+  HURRICANE_MILTON_HISTORICAL,
   MIAMI_BEACH_CENTER,
   MIAMI_BEACH_RISK_ZONES,
-} from "./mapData";
+} from "./assetData";
 
 export const getDashboard = query({
   args: {},
@@ -63,7 +63,11 @@ export const getDashboard = query({
       .map((opportunity) => ({
         _id: opportunity._id,
         propertyName: opportunity.propertyName,
+        assetType: opportunity.assetType,
+        city: opportunity.city,
         riskScore: opportunity.riskScore,
+        restorationDemandScore:
+          opportunity.restorationDemandScore ?? opportunity.riskScore,
         expectedRevenue: opportunity.expectedRevenue,
         status: opportunity.status,
         latitude: opportunity.latitude!,
@@ -72,6 +76,11 @@ export const getDashboard = query({
           ? ("discovered" as const)
           : ("pending" as const),
       }));
+
+    const stormTimeline =
+      activeStorm.stormTimeline && activeStorm.stormTimeline.length > 0
+        ? activeStorm.stormTimeline
+        : [...HURRICANE_MILTON_HISTORICAL.timeline];
 
     return {
       activeStormCount: activeStorms.length,
@@ -83,11 +92,27 @@ export const getDashboard = query({
         riskScore: activeStorm.riskScore,
         hoursUntilLandfall: activeStorm.hoursUntilLandfall,
         expectedRevenueImpact: activeStorm.expectedRevenueImpact,
+        category:
+          activeStorm.category ?? HURRICANE_MILTON_HISTORICAL.category,
+        historicalLandfall:
+          activeStorm.historicalLandfall ??
+          HURRICANE_MILTON_HISTORICAL.historicalLandfall,
+        landfallWindSpeedMph:
+          activeStorm.landfallWindSpeedMph ??
+          HURRICANE_MILTON_HISTORICAL.landfallWindSpeedMph,
+        isHistoricalReplay:
+          activeStorm.isHistoricalReplay ??
+          HURRICANE_MILTON_HISTORICAL.isHistoricalReplay,
+        stormTimeline,
       },
       opportunities: topOpportunities.map((opportunity) => ({
         _id: opportunity._id,
         propertyName: opportunity.propertyName,
+        assetType: opportunity.assetType,
+        city: opportunity.city,
         riskScore: opportunity.riskScore,
+        restorationDemandScore:
+          opportunity.restorationDemandScore ?? opportunity.riskScore,
         expectedRevenue: opportunity.expectedRevenue,
         status: opportunity.status,
       })),
@@ -102,7 +127,7 @@ export const getDashboard = query({
         : null,
       metrics: pipeline
         ? {
-            projectedRevenue: activeStorm.expectedRevenueImpact,
+            predictedRevenueOpportunity: activeStorm.expectedRevenueImpact,
             propertiesAtRisk: pipeline.found,
           }
         : null,
@@ -115,12 +140,26 @@ export const getDashboard = query({
         stormTrack:
           activeStorm.stormTrack && activeStorm.stormTrack.length > 0
             ? activeStorm.stormTrack
-            : [...HURRICANE_MILTON_TRACK],
+            : [...HURRICANE_MILTON_HISTORICAL.stormTrack],
         riskZones:
           activeStorm.riskZones && activeStorm.riskZones.length > 0
             ? activeStorm.riskZones
             : [...MIAMI_BEACH_RISK_ZONES],
         opportunities: mapOpportunities,
+        storm: {
+          category:
+            activeStorm.category ?? HURRICANE_MILTON_HISTORICAL.category,
+          historicalLandfall:
+            activeStorm.historicalLandfall ??
+            HURRICANE_MILTON_HISTORICAL.historicalLandfall,
+          landfallWindSpeedMph:
+            activeStorm.landfallWindSpeedMph ??
+            HURRICANE_MILTON_HISTORICAL.landfallWindSpeedMph,
+          isHistoricalReplay:
+            activeStorm.isHistoricalReplay ??
+            HURRICANE_MILTON_HISTORICAL.isHistoricalReplay,
+          timeline: stormTimeline,
+        },
       },
     };
   },

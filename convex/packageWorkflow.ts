@@ -6,6 +6,7 @@ import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { createOrangeSliceService } from "./services/orangeSlice";
 import { generateRevenueCapturePackage } from "./services/revenuePackage";
+import { revealContactDetails } from "./services/fiber";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -73,7 +74,7 @@ export const runPackageWorkflow = internalAction({
         const orangeSlice = createOrangeSliceService();
         const result = await orangeSlice.enrichCompany({
           companyName: context.decisionMaker.company,
-          location: context.storm.location,
+          location: context.opportunity.city ?? context.storm.location,
           domain: context.enrichment?.domain,
         });
 
@@ -123,6 +124,35 @@ export const runPackageWorkflow = internalAction({
         currentStep: "outreach",
       });
 
+      let contactEmail = context.decisionMaker.email;
+      let contactPhone = context.decisionMaker.phone;
+
+      if (
+        (!contactEmail || !contactPhone) &&
+        context.decisionMaker.linkedinUrl
+      ) {
+        try {
+          const revealed = await revealContactDetails(
+            context.decisionMaker.linkedinUrl,
+          );
+          contactEmail = revealed.email ?? contactEmail;
+          contactPhone = revealed.phone ?? contactPhone;
+
+          if (revealed.email || revealed.phone) {
+            await ctx.runMutation(internal.opportunityDb.patchDecisionMakerContact, {
+              opportunityId: args.opportunityId,
+              email: revealed.email,
+              phone: revealed.phone,
+            });
+          }
+        } catch (error) {
+          console.warn(
+            "[packageWorkflow] Contact reveal failed:",
+            error instanceof Error ? error.message : error,
+          );
+        }
+      }
+
       await sleep(500);
 
       await ctx.runMutation(internal.packageDb.updatePackageStatus, {
@@ -151,8 +181,8 @@ export const runPackageWorkflow = internalAction({
         contactName: context.decisionMaker.contactName,
         contactTitle: context.decisionMaker.contactTitle,
         company: context.decisionMaker.company,
-        email: context.decisionMaker.email,
-        phone: context.decisionMaker.phone,
+        email: contactEmail,
+        phone: contactPhone,
         companyDescription: enrichmentData?.companyDescription,
         employeeCount: enrichmentData?.employeeCount,
         companySize: enrichmentData?.companySize,

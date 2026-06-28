@@ -4,8 +4,9 @@ import { internalAction } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { analyzePropertyWithOpenAI } from "./services/openai";
-import { findDecisionMaker } from "./services/fiber";
+import { discoverDecisionMaker } from "./services/fiber";
 import { enrichProperty } from "./services/orangeSlice";
+import { buildPropertyContext } from "./services/propertyContext";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -24,6 +25,7 @@ export const runFullAnalysisWorkflow = internalAction({
       }
 
       const { run, storm, opportunity } = context;
+      const propertyContext = buildPropertyContext(opportunity, storm);
 
       await ctx.runMutation(internal.agentDb.setRunStep, {
         runId: args.runId,
@@ -35,7 +37,7 @@ export const runFullAnalysisWorkflow = internalAction({
 
       const enrichment = await enrichProperty({
         propertyName: opportunity.propertyName,
-        location: storm.location,
+        location: propertyContext.city,
       });
 
       await ctx.runMutation(internal.agentDb.setAgentResultStatus, {
@@ -48,7 +50,7 @@ export const runFullAnalysisWorkflow = internalAction({
 
       const openAiAnalysis = await analyzePropertyWithOpenAI({
         stormName: storm.name,
-        stormLocation: storm.location,
+        stormLocation: propertyContext.city,
         propertyName: opportunity.propertyName,
         riskScore: opportunity.riskScore,
         expectedRevenue: opportunity.expectedRevenue,
@@ -118,20 +120,43 @@ export const runFullAnalysisWorkflow = internalAction({
 
       await sleep(500);
 
-      const decisionMaker = await findDecisionMaker({
-        propertyName: opportunity.propertyName,
-        location: storm.location,
+      const discoveryOutcome = await discoverDecisionMaker(propertyContext, {
+        revealContact: true,
       });
+
+      const decisionMaker =
+        discoveryOutcome.status === "found"
+          ? discoveryOutcome.result
+          : {
+              propertyName: propertyContext.propertyName,
+              company: discoveryOutcome.bestCandidate ?? "—",
+              matchedCompany: discoveryOutcome.bestCandidate ?? "—",
+              matchConfidence: discoveryOutcome.bestConfidence ?? 0,
+              verified: false,
+              contactName: "Contact unavailable",
+              contactTitle: "On-site visit recommended",
+              source: "fiber" as const,
+            };
 
       await ctx.runMutation(internal.agentDb.setAgentResultStatus, {
         runId: args.runId,
         agentType: "decision_maker",
         status: "ready",
-        output: {
-          company: decisionMaker.company,
-          contactName: decisionMaker.contactName,
-          contactTitle: decisionMaker.contactTitle,
-        },
+        output:
+          discoveryOutcome.status === "found"
+            ? {
+                company: decisionMaker.company,
+                contactName: decisionMaker.contactName,
+                contactTitle: decisionMaker.contactTitle,
+              }
+            : {
+                availability: "unavailable",
+                message: discoveryOutcome.message,
+                visitLocation: discoveryOutcome.visitLocation,
+                company: decisionMaker.company,
+                contactName: decisionMaker.contactName,
+                contactTitle: decisionMaker.contactTitle,
+              },
       });
 
       await ctx.runMutation(internal.agentDb.setRunStep, {

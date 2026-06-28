@@ -1,6 +1,13 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
+import { MIAMI_COASTAL_ASSETS } from "./assetData";
+import {
+  buildRiskBreakdown,
+  RISK_MODEL_NAME,
+  RISK_WEIGHTS,
+} from "./services/riskIntelligence";
+import type { Doc } from "./_generated/dataModel";
 
 export const listOpportunities = query({
   args: {},
@@ -35,7 +42,11 @@ export const listOpportunities = query({
       opportunities: sorted.map((opportunity) => ({
         _id: opportunity._id,
         propertyName: opportunity.propertyName,
+        assetType: opportunity.assetType,
+        city: opportunity.city,
         riskScore: opportunity.riskScore,
+        restorationDemandScore:
+          opportunity.restorationDemandScore ?? opportunity.riskScore,
         expectedRevenue: opportunity.expectedRevenue,
         status: opportunity.status,
         priorityRank: opportunity.priorityRank,
@@ -95,6 +106,16 @@ export const getOpportunityDetail = query({
         contactName?: string;
         contactTitle?: string;
         phone?: string;
+        progressStep?: string;
+        progressMessage?: string;
+        availability?: string;
+        message?: string;
+        visitLocation?: string;
+        address?: string;
+        latitude?: number;
+        longitude?: number;
+        bestCandidate?: string;
+        bestConfidence?: number;
       } | null;
     } | null = null;
 
@@ -121,7 +142,13 @@ export const getOpportunityDetail = query({
 
     const decisionMaker = decisionMakerRecord
       ? {
+          propertyName:
+            decisionMakerRecord.propertyName ?? opportunity.propertyName,
           company: decisionMakerRecord.company,
+          matchedCompany:
+            decisionMakerRecord.matchedCompany ?? decisionMakerRecord.company,
+          matchConfidence: decisionMakerRecord.matchConfidence,
+          verified: decisionMakerRecord.verified ?? false,
           contactName: decisionMakerRecord.contactName,
           contactTitle: decisionMakerRecord.contactTitle,
           email: decisionMakerRecord.email,
@@ -132,7 +159,11 @@ export const getOpportunityDetail = query({
         }
       : decisionMakerAgent?.output?.contactName
         ? {
+            propertyName: opportunity.propertyName,
             company: decisionMakerAgent.output.company ?? "—",
+            matchedCompany: decisionMakerAgent.output.company ?? "—",
+            matchConfidence: undefined,
+            verified: false,
             contactName: decisionMakerAgent.output.contactName,
             contactTitle: decisionMakerAgent.output.contactTitle ?? "—",
             email: undefined,
@@ -195,7 +226,15 @@ export const getOpportunityDetail = query({
       opportunity: {
         _id: opportunity._id,
         propertyName: opportunity.propertyName,
+        assetType: opportunity.assetType,
+        city: opportunity.city,
+        address: opportunity.address,
+        propertyPhone: opportunity.propertyPhone,
+        latitude: opportunity.latitude,
+        longitude: opportunity.longitude,
         riskScore: opportunity.riskScore,
+        restorationDemandScore:
+          opportunity.restorationDemandScore ?? opportunity.riskScore,
         expectedRevenue: opportunity.expectedRevenue,
         status: opportunity.status,
         priorityRank: opportunity.priorityRank,
@@ -205,12 +244,18 @@ export const getOpportunityDetail = query({
       storm: {
         name: storm.name,
         location: storm.location,
+        historicalLandfall: storm.historicalLandfall,
       },
       riskExplanation,
       revenueExplanation,
+      riskIntelligence: buildRiskIntelligencePayload(opportunity),
       decisionMaker: decisionMaker
         ? {
+            propertyName: decisionMaker.propertyName,
             company: decisionMaker.company,
+            matchedCompany: decisionMaker.matchedCompany,
+            matchConfidence: decisionMaker.matchConfidence,
+            verified: decisionMaker.verified,
             contactName: decisionMaker.contactName,
             contactTitle: decisionMaker.contactTitle,
             email: decisionMaker.email,
@@ -224,8 +269,33 @@ export const getOpportunityDetail = query({
         ? {
             status: decisionMakerAgent.status,
             errorMessage: decisionMakerAgent.errorMessage,
+            progressStep: decisionMakerAgent.output?.progressStep,
+            progressMessage: decisionMakerAgent.output?.progressMessage,
+            availability: decisionMakerAgent.output?.availability,
+            unavailableMessage: decisionMakerAgent.output?.message,
+            visitLocation: decisionMakerAgent.output?.visitLocation,
           }
         : null,
+      discoveryUnavailable:
+        decisionMakerAgent?.output?.availability === "unavailable"
+          ? {
+              message:
+                decisionMakerAgent.output.message ??
+                "No verified contact available for this property.",
+              visitLocation:
+                decisionMakerAgent.output.visitLocation ??
+                opportunity.address ??
+                `${opportunity.propertyName}, ${opportunity.city ?? "Miami Beach"}`,
+              address: decisionMakerAgent.output.address ?? opportunity.address,
+              propertyPhone: opportunity.propertyPhone,
+              latitude:
+                decisionMakerAgent.output.latitude ?? opportunity.latitude,
+              longitude:
+                decisionMakerAgent.output.longitude ?? opportunity.longitude,
+              bestCandidate: decisionMakerAgent.output.bestCandidate,
+              bestConfidence: decisionMakerAgent.output.bestConfidence,
+            }
+          : null,
       outreachAgent,
       companyEnrichment: companyEnrichment
         ? {
@@ -358,6 +428,53 @@ export const startPackageGeneration = mutation({
   },
 });
 
+function buildRiskIntelligencePayload(opportunity: Doc<"opportunities">) {
+  const assetSeed =
+    MIAMI_COASTAL_ASSETS.find(
+      (asset) => asset.propertyName === opportunity.propertyName,
+    ) ?? null;
+
+  const breakdownInput =
+    opportunity.riskBreakdown ?? assetSeed?.riskBreakdown ?? null;
+
+  const breakdown = breakdownInput
+    ? buildRiskBreakdown(breakdownInput)
+    : [];
+
+  const revenueModel = opportunity.revenueModel ??
+    (assetSeed
+      ? {
+          assetValueFactor: assetSeed.assetValueFactor,
+          repairComplexityFactor: assetSeed.repairComplexityFactor,
+          baseScale: 100_000,
+        }
+      : null);
+
+  return {
+    modelName: RISK_MODEL_NAME,
+    riskScore: opportunity.riskScore,
+    formula: Object.values(RISK_WEIGHTS).map((component) => ({
+      label: component.label,
+      weightPercent: Math.round(component.weight * 100),
+    })),
+    breakdown,
+    whyAtRisk:
+      opportunity.whyAtRisk ??
+      assetSeed?.whyAtRisk ??
+      opportunity.riskExplanation ??
+      "",
+    revenueModel: revenueModel
+      ? {
+          ...revenueModel,
+          formula:
+            "Predicted Revenue = (Risk Score ÷ 100) × Asset Value Factor × Repair Complexity Factor × Base Scale",
+          disclaimer:
+            "OverStorm prediction only — not a real-world damage estimate or government forecast.",
+        }
+      : null,
+  };
+}
+
 function buildRiskExplanation(opportunity: {
   riskScore: number;
   buildingYear?: number;
@@ -383,5 +500,5 @@ function buildRevenueExplanation(opportunity: {
   riskScore: number;
   priorityRank?: number;
 }): string {
-  return `Expected revenue of $${opportunity.expectedRevenue.toLocaleString()} driven by risk score ${opportunity.riskScore} and property scale. Priority rank #${opportunity.priorityRank ?? "—"} in current storm pipeline.`;
+  return `OverStorm predicts a $${opportunity.expectedRevenue.toLocaleString()} revenue opportunity driven by risk score ${opportunity.riskScore} and property scale. Priority rank #${opportunity.priorityRank ?? "—"} in current storm pipeline.`;
 }

@@ -113,6 +113,25 @@ export const stormRiskZone = v.object({
   radiusMeters: v.number(),
 });
 
+export const stormTimelineEntry = v.object({
+  label: v.string(),
+  description: v.string(),
+});
+
+export const riskBreakdownFields = v.object({
+  coastalExposure: v.number(),
+  floodZoneSeverity: v.number(),
+  elevationRisk: v.number(),
+  stormPathProximity: v.number(),
+  assetVulnerability: v.number(),
+});
+
+export const revenueModelFields = v.object({
+  assetValueFactor: v.number(),
+  repairComplexityFactor: v.number(),
+  baseScale: v.number(),
+});
+
 export const agentOutput = v.object({
   riskScore: v.optional(v.number()),
   reasoning: v.optional(v.array(v.string())),
@@ -129,6 +148,17 @@ export const agentOutput = v.object({
   openAiRiskReasoning: v.optional(v.string()),
   openAiRevenueSummary: v.optional(v.string()),
   openAiOutreachRecommendation: v.optional(v.string()),
+  progressStep: v.optional(v.string()),
+  progressMessage: v.optional(v.string()),
+  availability: v.optional(v.string()),
+  message: v.optional(v.string()),
+  visitLocation: v.optional(v.string()),
+  address: v.optional(v.string()),
+  latitude: v.optional(v.number()),
+  longitude: v.optional(v.number()),
+  bestCandidate: v.optional(v.string()),
+  bestConfidence: v.optional(v.number()),
+  propertyName: v.optional(v.string()),
 });
 
 export default defineSchema({
@@ -145,6 +175,11 @@ export default defineSchema({
     mapZoom: v.optional(v.number()),
     stormTrack: v.optional(v.array(stormTrackPoint)),
     riskZones: v.optional(v.array(stormRiskZone)),
+    category: v.optional(v.string()),
+    historicalLandfall: v.optional(v.string()),
+    landfallWindSpeedMph: v.optional(v.number()),
+    isHistoricalReplay: v.optional(v.boolean()),
+    stormTimeline: v.optional(v.array(stormTimelineEntry)),
   }).index("by_status", ["status"]),
 
   opportunities: defineTable({
@@ -160,6 +195,17 @@ export default defineSchema({
     revenueExplanation: v.optional(v.string()),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
+    address: v.optional(v.string()),
+    propertyPhone: v.optional(v.string()),
+    searchAliases: v.optional(v.array(v.string())),
+    excludedEmployerPatterns: v.optional(v.array(v.string())),
+    requiredEmployerTokens: v.optional(v.array(v.string())),
+    assetType: v.optional(v.string()),
+    city: v.optional(v.string()),
+    restorationDemandScore: v.optional(v.number()),
+    riskBreakdown: v.optional(riskBreakdownFields),
+    whyAtRisk: v.optional(v.string()),
+    revenueModel: v.optional(revenueModelFields),
   })
     .index("by_storm", ["stormId"])
     .index("by_storm_and_rank", ["stormId", "priorityRank"]),
@@ -215,7 +261,13 @@ export default defineSchema({
 
   decisionMakers: defineTable({
     opportunityId: v.id("opportunities"),
+    propertyName: v.optional(v.string()),
     company: v.string(),
+    matchedCompany: v.optional(v.string()),
+    matchConfidence: v.optional(v.number()),
+    verified: v.optional(v.boolean()),
+    searchCenterLat: v.optional(v.number()),
+    searchCenterLng: v.optional(v.number()),
     contactName: v.string(),
     contactTitle: v.string(),
     email: v.optional(v.string()),

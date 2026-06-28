@@ -3,7 +3,10 @@ import { formatCurrency } from "@/lib/format";
 type Opportunity = {
   _id: string;
   propertyName: string;
+  assetType?: string;
+  city?: string;
   riskScore: number;
+  restorationDemandScore?: number;
   expectedRevenue: number;
   status: string;
 };
@@ -28,22 +31,25 @@ export function RevenueOpportunitiesTable({
           Top Revenue Opportunities
         </h2>
         <p className="mt-1 text-sm text-slate-500">
-          Ranked by expected revenue potential
+          Real Miami coastal assets · OverStorm model predictions
         </p>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[400px] text-left text-sm">
+        <table className="w-full min-w-[520px] text-left text-sm">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50/80">
               <th className="px-6 py-3.5 font-medium text-slate-500">
-                Property Name
+                Asset
               </th>
               <th className="px-6 py-3.5 font-medium text-slate-500">
-                Risk Score
+                <span title="OverStorm Proprietary Risk Model">Risk Score</span>
               </th>
               <th className="px-6 py-3.5 font-medium text-slate-500">
-                Expected Revenue
+                Restoration Demand
+              </th>
+              <th className="px-6 py-3.5 font-medium text-slate-500">
+                Predicted Revenue
               </th>
             </tr>
           </thead>
@@ -53,8 +59,15 @@ export function RevenueOpportunitiesTable({
                 key={opportunity._id}
                 className="transition-colors hover:bg-slate-50/60"
               >
-                <td className="px-6 py-4 font-medium text-slate-900">
-                  {opportunity.propertyName}
+                <td className="px-6 py-4">
+                  <p className="font-medium text-slate-900">
+                    {opportunity.propertyName}
+                  </p>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {[opportunity.assetType, opportunity.city]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
                 </td>
                 <td className="px-6 py-4">
                   <span
@@ -63,8 +76,17 @@ export function RevenueOpportunitiesTable({
                     {opportunity.riskScore}
                   </span>
                 </td>
-                <td className="px-6 py-4 font-medium text-slate-900">
-                  {formatCurrency(opportunity.expectedRevenue)}
+                <td className="px-6 py-4">
+                  <span className="font-medium text-amber-800">
+                    {opportunity.restorationDemandScore ?? opportunity.riskScore}
+                  </span>
+                  <p className="text-[10px] text-slate-400">OverStorm model</p>
+                </td>
+                <td className="px-6 py-4">
+                  <p className="font-medium text-slate-900">
+                    {formatCurrency(opportunity.expectedRevenue)}
+                  </p>
+                  <p className="text-[10px] text-slate-400">Predicted opportunity</p>
                 </td>
               </tr>
             ))}

@@ -1,10 +1,69 @@
 import { mutation } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import {
-  HURRICANE_MILTON_TRACK,
+  HURRICANE_MILTON_HISTORICAL,
   MIAMI_BEACH_CENTER,
   MIAMI_BEACH_RISK_ZONES,
-  OPPORTUNITY_MAP_COORDS,
-} from "./mapData";
+  MIAMI_COASTAL_ASSETS,
+} from "./assetData";
+import { REVENUE_BASE_SCALE } from "./services/riskIntelligence";
+
+function opportunityFromAsset(
+  stormId: Id<"storms">,
+  asset: (typeof MIAMI_COASTAL_ASSETS)[number],
+) {
+  return {
+    stormId,
+    propertyName: asset.propertyName,
+    riskScore: asset.riskScore,
+    restorationDemandScore: asset.restorationDemandScore,
+    expectedRevenue: asset.expectedRevenue,
+    status: asset.status,
+    priorityRank: asset.priorityRank,
+    buildingYear: asset.buildingYear,
+    propertyNotes: asset.propertyNotes,
+    riskExplanation: asset.riskExplanation,
+    revenueExplanation: asset.revenueExplanation,
+    whyAtRisk: asset.whyAtRisk,
+    riskBreakdown: asset.riskBreakdown,
+    revenueModel: {
+      assetValueFactor: asset.assetValueFactor,
+      repairComplexityFactor: asset.repairComplexityFactor,
+      baseScale: REVENUE_BASE_SCALE,
+    },
+    latitude: asset.latitude,
+    longitude: asset.longitude,
+    address: asset.address,
+    propertyPhone: asset.propertyPhone,
+    searchAliases: asset.searchAliases,
+    excludedEmployerPatterns: asset.excludedEmployerPatterns,
+    requiredEmployerTokens: asset.requiredEmployerTokens,
+    assetType: asset.assetType,
+    city: asset.city,
+  };
+}
+
+function buildStormRecord(updatedAt: number) {
+  return {
+    name: HURRICANE_MILTON_HISTORICAL.name,
+    location: HURRICANE_MILTON_HISTORICAL.location,
+    riskScore: HURRICANE_MILTON_HISTORICAL.riskScore,
+    hoursUntilLandfall: HURRICANE_MILTON_HISTORICAL.hoursUntilLandfall,
+    expectedRevenueImpact: HURRICANE_MILTON_HISTORICAL.expectedRevenueImpact,
+    status: "active" as const,
+    updatedAt,
+    mapCenterLat: MIAMI_BEACH_CENTER.lat,
+    mapCenterLng: MIAMI_BEACH_CENTER.lng,
+    mapZoom: MIAMI_BEACH_CENTER.zoom,
+    stormTrack: [...HURRICANE_MILTON_HISTORICAL.stormTrack],
+    riskZones: [...MIAMI_BEACH_RISK_ZONES],
+    category: HURRICANE_MILTON_HISTORICAL.category,
+    historicalLandfall: HURRICANE_MILTON_HISTORICAL.historicalLandfall,
+    landfallWindSpeedMph: HURRICANE_MILTON_HISTORICAL.landfallWindSpeedMph,
+    isHistoricalReplay: HURRICANE_MILTON_HISTORICAL.isHistoricalReplay,
+    stormTimeline: [...HURRICANE_MILTON_HISTORICAL.timeline],
+  };
+}
 
 export const seedDashboard = mutation({
   args: {},
@@ -15,89 +74,13 @@ export const seedDashboard = mutation({
     }
 
     const now = Date.now();
+    const stormId = await ctx.db.insert("storms", buildStormRecord(now));
 
-    const stormId = await ctx.db.insert("storms", {
-      name: "Hurricane Milton",
-      location: "Miami Beach",
-      riskScore: 89,
-      hoursUntilLandfall: 36,
-      expectedRevenueImpact: 1_200_000,
-      status: "active",
-      updatedAt: now,
-      mapCenterLat: MIAMI_BEACH_CENTER.lat,
-      mapCenterLng: MIAMI_BEACH_CENTER.lng,
-      mapZoom: MIAMI_BEACH_CENTER.zoom,
-      stormTrack: [...HURRICANE_MILTON_TRACK],
-      riskZones: [...MIAMI_BEACH_RISK_ZONES],
-    });
+    let topOpportunityId: Id<"opportunities"> | null = null;
 
-    const opportunities = [
-      {
-        propertyName: "Ocean View Plaza",
-        riskScore: 91,
-        expectedRevenue: 180_000,
-        status: "identified" as const,
-        priorityRank: 1,
-        buildingYear: 1974,
-        propertyNotes: "Near coastline, High wind exposure",
-        riskExplanation:
-          "Elevated risk due to 1974 construction, coastal proximity, and high wind exposure profile.",
-        revenueExplanation:
-          "Premium restoration opportunity at $180,000 driven by 91 risk score and large commercial footprint.",
-      },
-      {
-        propertyName: "Bayfront Towers",
-        riskScore: 82,
-        expectedRevenue: 95_000,
-        status: "identified" as const,
-        priorityRank: 2,
-        buildingYear: 1988,
-        propertyNotes: "Coastal commercial tower",
-        riskExplanation:
-          "Moderate-high risk from coastal exposure and aging building systems built in 1988.",
-        revenueExplanation:
-          "Strong $95,000 opportunity with priority rank #2 in the Miami Beach pipeline.",
-      },
-      {
-        propertyName: "Sunset Residences",
-        riskScore: 74,
-        expectedRevenue: 58_000,
-        status: "identified" as const,
-        priorityRank: 3,
-        buildingYear: 2001,
-        propertyNotes: "Residential complex, moderate exposure",
-        riskExplanation:
-          "Moderate risk score reflecting newer construction with residual storm surge exposure.",
-        revenueExplanation:
-          "$58,000 expected value based on risk-adjusted property size and market rates.",
-      },
-      {
-        propertyName: "Palm Grove Center",
-        riskScore: 62,
-        expectedRevenue: 22_000,
-        status: "identified" as const,
-        priorityRank: 4,
-        buildingYear: 1995,
-        propertyNotes: "Retail strip, inland exposure",
-        riskExplanation:
-          "Lower risk inland position with moderate wind exposure on aging retail structure.",
-        revenueExplanation:
-          "$22,000 opportunity from smaller footprint with residual storm damage potential.",
-      },
-    ];
-
-    let topOpportunityId: import("./_generated/dataModel").Id<"opportunities"> | null =
-      null;
-
-    for (const opportunity of opportunities) {
-      const coords = OPPORTUNITY_MAP_COORDS[opportunity.propertyName];
-      const id = await ctx.db.insert("opportunities", {
-        stormId,
-        ...opportunity,
-        latitude: coords?.latitude,
-        longitude: coords?.longitude,
-      });
-      if (opportunity.priorityRank === 1) {
+    for (const asset of MIAMI_COASTAL_ASSETS) {
+      const id = await ctx.db.insert("opportunities", opportunityFromAsset(stormId, asset));
+      if (asset.priorityRank === 1) {
         topOpportunityId = id;
       }
     }
@@ -113,6 +96,7 @@ export const seedDashboard = mutation({
     });
 
     if (topOpportunityId) {
+      const topAsset = MIAMI_COASTAL_ASSETS[0];
       const runId = await ctx.db.insert("agentRuns", {
         stormId,
         opportunityId: topOpportunityId,
@@ -125,32 +109,33 @@ export const seedDashboard = mutation({
 
       const seedOutput = {
         risk: {
-          riskScore: 91,
-          reasoning: ["Built 1974", "Near coastline", "High wind exposure"],
-          openAiRiskReasoning:
-            "Elevated structural vulnerability due to age and coastal proximity.",
+          riskScore: topAsset.riskScore,
+          reasoning: [
+            "Atlantic coastline",
+            "Low elevation barrier island",
+            "Storm surge exposure",
+          ],
+          openAiRiskReasoning: topAsset.riskExplanation,
         },
         revenue: {
-          expectedRevenue: 180_000,
-          priorityRank: 1,
-          revenueSummary:
-            "High-value restoration opportunity with urgent timeline before landfall.",
-          openAiRevenueSummary:
-            "High-value restoration opportunity with urgent timeline before landfall.",
+          expectedRevenue: topAsset.expectedRevenue,
+          priorityRank: topAsset.priorityRank,
+          revenueSummary: topAsset.revenueExplanation,
+          openAiRevenueSummary: topAsset.revenueExplanation,
         },
         decisionMaker: {
-          company: "ABC Property Management",
+          company: "Fontainebleau Miami Beach",
           contactName: "John Smith",
           contactTitle: "Director of Operations",
         },
         outreach: {
           emailDraftReady: true,
           emailDraft:
-            "Subject: Proactive Storm Preparedness — Ocean View Plaza\n\nDear John,\n\nWith Hurricane Milton approaching Miami Beach, we wanted to reach out proactively regarding storm preparedness and rapid response capabilities for Ocean View Plaza.\n\nOur team specializes in pre-positioned disaster recovery for commercial properties. We would welcome a brief call to discuss your contingency plans.\n\nBest regards,\nOverStorm Recovery Team",
+            "Subject: Proactive Storm Preparedness — Fontainebleau Miami Beach\n\nDear John,\n\nReviewing Hurricane Milton's historical impact on South Florida, we wanted to reach out regarding disaster recovery capabilities for Fontainebleau Miami Beach.\n\nOur team specializes in pre-positioned hospitality restoration. We would welcome a brief call to discuss contingency planning.\n\nBest regards,\nOverStorm Recovery Team",
           outreachRecommendation:
-            "Send personalized email emphasizing proactive positioning before landfall.",
+            "Send personalized email referencing Milton historical replay and coastal exposure profile.",
           openAiOutreachRecommendation:
-            "Send personalized email emphasizing proactive positioning before landfall.",
+            "Send personalized email referencing Milton historical replay and coastal exposure profile.",
         },
       };
 
@@ -194,9 +179,9 @@ export const seedDashboard = mutation({
         runId,
         stormId,
         opportunityId: topOpportunityId,
-        propertyName: "Ocean View Plaza",
-        stormName: "Hurricane Milton",
-        summary: seedOutput.revenue.revenueSummary,
+        propertyName: topAsset.propertyName,
+        stormName: HURRICANE_MILTON_HISTORICAL.name,
+        summary: topAsset.revenueExplanation,
         completedAt: now - 3500_000,
         snapshot: {
           ...seedOutput.risk,
@@ -259,31 +244,32 @@ export const seedAgentDemo = mutation({
     const seedOutput = {
       risk: {
         riskScore: topOpportunity.riskScore,
-        reasoning: ["Built 1974", "Near coastline", "High wind exposure"],
-        openAiRiskReasoning:
-          "Elevated structural vulnerability due to age and coastal proximity.",
+        reasoning: [
+          "Atlantic coastline",
+          "Low elevation barrier island",
+          "Storm surge exposure",
+        ],
+        openAiRiskReasoning: topOpportunity.riskExplanation,
       },
       revenue: {
         expectedRevenue: topOpportunity.expectedRevenue,
         priorityRank: topOpportunity.priorityRank ?? 1,
-        revenueSummary:
-          "High-value restoration opportunity with urgent timeline before landfall.",
-        openAiRevenueSummary:
-          "High-value restoration opportunity with urgent timeline before landfall.",
+        revenueSummary: topOpportunity.revenueExplanation,
+        openAiRevenueSummary: topOpportunity.revenueExplanation,
       },
       decisionMaker: {
-        company: "ABC Property Management",
+        company: topOpportunity.propertyName,
         contactName: "John Smith",
         contactTitle: "Director of Operations",
       },
       outreach: {
         emailDraftReady: true,
         emailDraft:
-          "Subject: Proactive Storm Preparedness\n\nDear John,\n\nWith the approaching storm, we wanted to reach out proactively regarding disaster recovery capabilities for your property.\n\nBest regards,\nOverStorm Recovery Team",
+          "Subject: Proactive Storm Preparedness\n\nDear John,\n\nReviewing Hurricane Milton's historical impact on South Florida, we wanted to reach out regarding disaster recovery capabilities.\n\nBest regards,\nOverStorm Recovery Team",
         outreachRecommendation:
-          "Send personalized email emphasizing proactive positioning before landfall.",
+          "Send personalized email referencing Milton historical replay and coastal exposure.",
         openAiOutreachRecommendation:
-          "Send personalized email emphasizing proactive positioning before landfall.",
+          "Send personalized email referencing Milton historical replay and coastal exposure.",
       },
     };
 
@@ -329,7 +315,7 @@ export const seedAgentDemo = mutation({
       opportunityId: topOpportunity._id,
       propertyName: topOpportunity.propertyName,
       stormName: activeStorm.name,
-      summary: seedOutput.revenue.revenueSummary,
+      summary: topOpportunity.revenueExplanation ?? "",
       completedAt: now - 3500_000,
       snapshot: {
         ...seedOutput.risk,
@@ -343,77 +329,118 @@ export const seedAgentDemo = mutation({
   },
 });
 
-export const patchMapData = mutation({
+export const patchRealAssets = mutation({
   args: {},
   handler: async (ctx) => {
+    const now = Date.now();
     const storms = await ctx.db.query("storms").collect();
-    let stormsPatched = 0;
 
     for (const storm of storms) {
-      const needsPatch =
-        !storm.mapCenterLat ||
-        !storm.stormTrack?.length ||
-        !storm.riskZones?.length;
-
-      if (needsPatch) {
-        await ctx.db.patch(storm._id, {
-          mapCenterLat: MIAMI_BEACH_CENTER.lat,
-          mapCenterLng: MIAMI_BEACH_CENTER.lng,
-          mapZoom: MIAMI_BEACH_CENTER.zoom,
-          stormTrack: [...HURRICANE_MILTON_TRACK],
-          riskZones: [...MIAMI_BEACH_RISK_ZONES],
-        });
-        stormsPatched += 1;
-      }
+      await ctx.db.patch(storm._id, buildStormRecord(now));
     }
 
-    const opportunities = await ctx.db.query("opportunities").collect();
-    let opportunitiesPatched = 0;
-
-    for (const opportunity of opportunities) {
-      const coords = OPPORTUNITY_MAP_COORDS[opportunity.propertyName];
-      if (!coords) continue;
-
-      if (
-        opportunity.latitude === undefined ||
-        opportunity.longitude === undefined
-      ) {
-        await ctx.db.patch(opportunity._id, {
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-        });
-        opportunitiesPatched += 1;
-      }
+    const activeStorm =
+      storms.find((storm) => storm.status === "active") ?? storms[0];
+    if (!activeStorm) {
+      return { patched: false, message: "No storms found." };
     }
 
-    const palmGrove = opportunities.find(
-      (opportunity) => opportunity.propertyName === "Palm Grove Center",
-    );
-    if (!palmGrove && storms[0]) {
-      const coords = OPPORTUNITY_MAP_COORDS["Palm Grove Center"];
-      await ctx.db.insert("opportunities", {
-        stormId: storms[0]._id,
-        propertyName: "Palm Grove Center",
-        riskScore: 62,
-        expectedRevenue: 22_000,
-        status: "identified",
-        priorityRank: 4,
-        buildingYear: 1995,
-        propertyNotes: "Retail strip, inland exposure",
-        riskExplanation:
-          "Lower risk inland position with moderate wind exposure on aging retail structure.",
-        revenueExplanation:
-          "$22,000 opportunity from smaller footprint with residual storm damage potential.",
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-      });
-      opportunitiesPatched += 1;
+    const existingOpportunities = await ctx.db
+      .query("opportunities")
+      .withIndex("by_storm", (q) => q.eq("stormId", activeStorm._id))
+      .collect();
+
+    for (const opportunity of existingOpportunities) {
+      const enrichments = await ctx.db
+        .query("companyEnrichments")
+        .withIndex("by_opportunity", (q) =>
+          q.eq("opportunityId", opportunity._id),
+        )
+        .collect();
+      for (const row of enrichments) {
+        await ctx.db.delete(row._id);
+      }
+
+      const decisionMakers = await ctx.db
+        .query("decisionMakers")
+        .withIndex("by_opportunity", (q) =>
+          q.eq("opportunityId", opportunity._id),
+        )
+        .collect();
+      for (const row of decisionMakers) {
+        await ctx.db.delete(row._id);
+      }
+
+      const packages = await ctx.db
+        .query("revenueCapturePackages")
+        .withIndex("by_opportunity", (q) =>
+          q.eq("opportunityId", opportunity._id),
+        )
+        .collect();
+      for (const row of packages) {
+        await ctx.db.delete(row._id);
+      }
+
+      await ctx.db.delete(opportunity._id);
+    }
+
+    let inserted = 0;
+    for (const asset of MIAMI_COASTAL_ASSETS) {
+      await ctx.db.insert(
+        "opportunities",
+        opportunityFromAsset(activeStorm._id, asset),
+      );
+      inserted += 1;
     }
 
     return {
-      patched: stormsPatched > 0 || opportunitiesPatched > 0,
-      stormsPatched,
-      opportunitiesPatched,
+      patched: true,
+      stormsPatched: storms.length,
+      opportunitiesReplaced: inserted,
     };
   },
 });
+
+/** Update geodata, phones, and Fiber tuning fields without replacing opportunities. */
+export const syncCoastalAssetMetadata = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const opportunities = await ctx.db.query("opportunities").collect();
+    let updated = 0;
+
+    for (const asset of MIAMI_COASTAL_ASSETS) {
+      const match = opportunities.find(
+        (row) => row.propertyName === asset.propertyName,
+      );
+      if (!match) continue;
+
+      await ctx.db.patch(match._id, {
+        latitude: asset.latitude,
+        longitude: asset.longitude,
+        address: asset.address,
+        propertyPhone: asset.propertyPhone,
+        searchAliases: asset.searchAliases,
+        excludedEmployerPatterns: asset.excludedEmployerPatterns,
+        requiredEmployerTokens: asset.requiredEmployerTokens,
+        riskScore: asset.riskScore,
+        restorationDemandScore: asset.restorationDemandScore,
+        expectedRevenue: asset.expectedRevenue,
+        riskExplanation: asset.riskExplanation,
+        revenueExplanation: asset.revenueExplanation,
+        whyAtRisk: asset.whyAtRisk,
+        riskBreakdown: asset.riskBreakdown,
+        revenueModel: {
+          assetValueFactor: asset.assetValueFactor,
+          repairComplexityFactor: asset.repairComplexityFactor,
+          baseScale: REVENUE_BASE_SCALE,
+        },
+      });
+      updated += 1;
+    }
+
+    return { updated, total: MIAMI_COASTAL_ASSETS.length };
+  },
+});
+
+/** @deprecated Use patchRealAssets */
+export const patchMapData = patchRealAssets;

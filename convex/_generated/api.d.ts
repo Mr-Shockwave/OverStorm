@@ -11,6 +11,7 @@
 import type * as agentDb from "../agentDb.js";
 import type * as agentWorkflow from "../agentWorkflow.js";
 import type * as agents from "../agents.js";
+import type * as assetData from "../assetData.js";
 import type * as dashboard from "../dashboard.js";
 import type * as discoveryWorkflow from "../discoveryWorkflow.js";
 import type * as mapData from "../mapData.js";
@@ -22,7 +23,9 @@ import type * as seed from "../seed.js";
 import type * as services_fiber from "../services/fiber.js";
 import type * as services_openai from "../services/openai.js";
 import type * as services_orangeSlice from "../services/orangeSlice.js";
+import type * as services_propertyContext from "../services/propertyContext.js";
 import type * as services_revenuePackage from "../services/revenuePackage.js";
+import type * as services_riskIntelligence from "../services/riskIntelligence.js";
 
 import type {
   ApiFromModules,
@@ -34,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   agentDb: typeof agentDb;
   agentWorkflow: typeof agentWorkflow;
   agents: typeof agents;
+  assetData: typeof assetData;
   dashboard: typeof dashboard;
   discoveryWorkflow: typeof discoveryWorkflow;
   mapData: typeof mapData;
@@ -45,7 +49,9 @@ declare const fullApi: ApiFromModules<{
   "services/fiber": typeof services_fiber;
   "services/openai": typeof services_openai;
   "services/orangeSlice": typeof services_orangeSlice;
+  "services/propertyContext": typeof services_propertyContext;
   "services/revenuePackage": typeof services_revenuePackage;
+  "services/riskIntelligence": typeof services_riskIntelligence;
 }>;
 
 /**

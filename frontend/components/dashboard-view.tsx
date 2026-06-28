@@ -43,8 +43,9 @@ export function DashboardView() {
           <StormIntelligenceMap
             stormName={dashboard.activeStorm.name}
             stormLocation={dashboard.activeStorm.location}
-            hoursUntilLandfall={dashboard.activeStorm.hoursUntilLandfall}
-            projectedRevenue={dashboard.metrics.projectedRevenue}
+            predictedRevenueOpportunity={
+              dashboard.metrics.predictedRevenueOpportunity
+            }
             propertiesAtRisk={dashboard.metrics.propertiesAtRisk}
             map={dashboard.map}
           />

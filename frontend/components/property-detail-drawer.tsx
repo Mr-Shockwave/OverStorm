@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { RevenueCapturePackageSection } from "@/components/revenue-capture-package";
+import { RiskIntelligencePanel } from "@/components/risk-intelligence-panel";
 import { formatCurrency } from "@/lib/format";
 import { formatAgentStatus, statusStylesLight } from "@/lib/agents";
 
@@ -71,11 +72,18 @@ export function PropertyDetailDrawer({
             ) : (
               <>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-sky-600">
-                  Property Detail
+                  Coastal Asset
                 </p>
                 <h2 className="mt-1 truncate text-xl font-semibold text-slate-900">
                   {detail?.opportunity.propertyName ?? "—"}
                 </h2>
+                {(detail?.opportunity.assetType || detail?.opportunity.city) && (
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {[detail.opportunity.assetType, detail.opportunity.city]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                )}
               </>
             )}
           </div>
@@ -110,20 +118,26 @@ export function PropertyDetailDrawer({
             <div className="space-y-6">
               <MetricsGrid
                 riskScore={detail.opportunity.riskScore}
+                restorationDemandScore={
+                  detail.opportunity.restorationDemandScore ??
+                  detail.opportunity.riskScore
+                }
                 expectedRevenue={detail.opportunity.expectedRevenue}
                 status={detail.opportunity.status}
                 storm={detail.storm.name}
-                location={detail.storm.location}
+                assetLocation={detail.opportunity.city ?? "—"}
+                address={detail.opportunity.address}
+                historicalLandfall={detail.storm.historicalLandfall}
+                latitude={detail.opportunity.latitude}
+                longitude={detail.opportunity.longitude}
               />
 
-              <ExplanationBlock
-                title="Risk Explanation"
-                content={detail.riskExplanation}
-              />
-              <ExplanationBlock
-                title="Revenue Explanation"
-                content={detail.revenueExplanation}
-              />
+              {detail.riskIntelligence && (
+                <RiskIntelligencePanel
+                  intelligence={detail.riskIntelligence}
+                  expectedRevenue={detail.opportunity.expectedRevenue}
+                />
+              )}
 
               <section className="rounded-xl border border-slate-200 bg-slate-50/50 p-5">
                 <div className="flex items-center justify-between gap-3">
@@ -132,7 +146,7 @@ export function PropertyDetailDrawer({
                       Decision Maker Agent
                     </h3>
                     <p className="mt-0.5 text-xs text-slate-500">
-                      Discover property contacts via Fiber
+                      Fiber search anchored to map pin coordinates
                     </p>
                   </div>
                   {detail.decisionMakerAgent && (
@@ -160,6 +174,58 @@ export function PropertyDetailDrawer({
                   )}
                 </button>
 
+                {isDiscoveryRunning && detail.decisionMakerAgent?.progressMessage && (
+                  <div className="mt-3 rounded-lg border border-sky-100 bg-sky-50/60 px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-sky-200 border-t-sky-600" />
+                      <p className="text-xs font-medium text-sky-800">
+                        {detail.decisionMakerAgent.progressMessage}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {detail.discoveryUnavailable && !isDiscoveryRunning && (
+                  <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+                    <p className="text-sm font-medium text-amber-900">
+                      No contact available
+                    </p>
+                    <p className="mt-1 text-xs text-amber-800">
+                      {detail.discoveryUnavailable.message}
+                    </p>
+                    <p className="mt-2 text-xs text-amber-700">
+                      Visit property:{" "}
+                      <span className="font-medium">
+                        {detail.discoveryUnavailable.visitLocation}
+                      </span>
+                    </p>
+                    {detail.discoveryUnavailable.propertyPhone && (
+                      <p className="mt-2 text-xs text-amber-700">
+                        Property line:{" "}
+                        <span className="font-medium">
+                          {detail.discoveryUnavailable.propertyPhone}
+                        </span>
+                      </p>
+                    )}
+                    {detail.opportunity.propertyPhone &&
+                      !detail.discoveryUnavailable.propertyPhone && (
+                        <p className="mt-2 text-xs text-amber-700">
+                          Property line:{" "}
+                          <span className="font-medium">
+                            {detail.opportunity.propertyPhone}
+                          </span>
+                        </p>
+                      )}
+                    {detail.discoveryUnavailable.bestCandidate && (
+                      <p className="mt-1 text-[11px] text-amber-600">
+                        Closest match: {detail.discoveryUnavailable.bestCandidate}
+                        {detail.discoveryUnavailable.bestConfidence !== undefined &&
+                          ` (${Math.round(detail.discoveryUnavailable.bestConfidence * 100)}%)`}
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {error && (
                   <p className="mt-2 text-xs text-red-600">{error}</p>
                 )}
@@ -173,6 +239,7 @@ export function PropertyDetailDrawer({
               <RevenueCapturePackageSection
                 opportunityId={opportunityId}
                 decisionMaker={detail.decisionMaker}
+                discoveryUnavailable={detail.discoveryUnavailable}
                 companyEnrichment={detail.companyEnrichment}
                 revenueCapturePackage={detail.revenueCapturePackage}
                 outreachAgent={detail.outreachAgent}
@@ -189,23 +256,55 @@ export function PropertyDetailDrawer({
 
 function MetricsGrid({
   riskScore,
+  restorationDemandScore,
   expectedRevenue,
   status,
   storm,
-  location,
+  assetLocation,
+  address,
+  historicalLandfall,
+  latitude,
+  longitude,
 }: {
   riskScore: number;
+  restorationDemandScore: number;
   expectedRevenue: number;
   status: string;
   storm: string;
-  location: string;
+  assetLocation: string;
+  address?: string;
+  historicalLandfall?: string;
+  latitude?: number;
+  longitude?: number;
 }) {
+  const coordinateLabel =
+    latitude !== undefined && longitude !== undefined
+      ? `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
+      : "Not geocoded";
+
   const items = [
-    { label: "Risk Score", value: `${riskScore}` },
-    { label: "Expected Revenue", value: formatCurrency(expectedRevenue) },
+    {
+      label: "Risk Score",
+      value: `${riskScore}`,
+      hint: "OverStorm model",
+    },
+    {
+      label: "Restoration Demand",
+      value: `${restorationDemandScore}`,
+      hint: "OverStorm model",
+    },
+    {
+      label: "Predicted Revenue",
+      value: formatCurrency(expectedRevenue),
+      hint: "Opportunity",
+    },
     { label: "Status", value: formatStatus(status) },
-    { label: "Storm", value: storm },
-    { label: "Location", value: location },
+    { label: "Storm Replay", value: storm },
+    { label: "Asset Location", value: address ?? assetLocation, hint: address ? "Street address" : undefined },
+    { label: "Map Coordinates", value: coordinateLabel, hint: "Map pin" },
+    ...(historicalLandfall
+      ? [{ label: "Historical Landfall", value: historicalLandfall }]
+      : []),
   ];
 
   return (
@@ -221,23 +320,11 @@ function MetricsGrid({
           <p className="mt-1 text-sm font-semibold text-slate-900">
             {item.value}
           </p>
+          {item.hint && (
+            <p className="mt-0.5 text-[10px] text-slate-400">{item.hint}</p>
+          )}
         </div>
       ))}
-    </div>
-  );
-}
-
-function ExplanationBlock({
-  title,
-  content,
-}: {
-  title: string;
-  content: string;
-}) {
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white px-5 py-4">
-      <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
-      <p className="mt-2 text-sm leading-relaxed text-slate-600">{content}</p>
     </div>
   );
 }

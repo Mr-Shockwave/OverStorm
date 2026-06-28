@@ -17,7 +17,10 @@ import { formatCurrency } from "@/lib/format";
 export type MapOpportunity = {
   _id: string;
   propertyName: string;
+  assetType?: string;
+  city?: string;
   riskScore: number;
+  restorationDemandScore: number;
   expectedRevenue: number;
   status: string;
   latitude: number;
@@ -39,18 +42,26 @@ export type RiskZone = {
   radiusMeters: number;
 };
 
+export type StormHistoricalMeta = {
+  category: string;
+  historicalLandfall: string;
+  landfallWindSpeedMph: number;
+  isHistoricalReplay: boolean;
+  timeline: Array<{ label: string; description: string }>;
+};
+
 export type StormMapData = {
   center: { lat: number; lng: number; zoom: number };
   stormTrack: StormTrackPoint[];
   riskZones: RiskZone[];
   opportunities: MapOpportunity[];
+  storm: StormHistoricalMeta;
 };
 
 type StormMapInnerProps = {
   stormName: string;
   stormLocation: string;
-  hoursUntilLandfall: number;
-  projectedRevenue: number;
+  predictedRevenueOpportunity: number;
   propertiesAtRisk: number;
   map: StormMapData;
 };
@@ -79,12 +90,6 @@ const RISK_ZONE_STYLES: Record<
   },
 };
 
-function formatStatus(status: string): string {
-  return status
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
 
 function MapInitializer({ center, zoom }: { center: [number, number]; zoom: number }) {
   const map = useMap();
@@ -97,12 +102,12 @@ function MapInitializer({ center, zoom }: { center: [number, number]; zoom: numb
   return null;
 }
 
-function createTrackLabelIcon(label: string, isCurrent: boolean) {
+function createTrackLabelIcon(label: string, isLandfall: boolean) {
   return L.divIcon({
     className: "storm-track-label-icon",
-    html: `<span class="storm-track-label ${isCurrent ? "storm-track-label--now" : ""}">${label}</span>`,
-    iconSize: [48, 20],
-    iconAnchor: [24, 10],
+    html: `<span class="storm-track-label ${isLandfall ? "storm-track-label--landfall" : ""}">${label}</span>`,
+    iconSize: [56, 20],
+    iconAnchor: [28, 10],
   });
 }
 
@@ -136,8 +141,7 @@ function createStormEyeIcon() {
 export function StormMapInner({
   stormName,
   stormLocation,
-  hoursUntilLandfall,
-  projectedRevenue,
+  predictedRevenueOpportunity,
   propertiesAtRisk,
   map,
 }: StormMapInnerProps) {
@@ -156,40 +160,64 @@ export function StormMapInner({
     [map.riskZones],
   );
 
-  const currentPosition = map.stormTrack[0];
+  const landfallPosition = map.stormTrack[map.stormTrack.length - 1];
+  const lastTrackIndex = map.stormTrack.length - 1;
 
   return (
     <div className="storm-map-shell relative h-full w-full">
       <div className="storm-map-overlay pointer-events-none absolute inset-x-0 top-0 z-[1000] flex items-start justify-between gap-4 p-4">
-        <div className="pointer-events-auto rounded-lg border border-slate-700/60 bg-slate-950/85 px-4 py-3 shadow-xl backdrop-blur-sm">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-sky-400">
-            Storm Intelligence
-          </p>
+        <div className="pointer-events-auto max-w-sm rounded-lg border border-slate-700/60 bg-slate-950/85 px-4 py-3 shadow-xl backdrop-blur-sm">
+          <div className="flex items-center gap-2">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-sky-400">
+              Historical Replay
+            </p>
+            {map.storm.isHistoricalReplay && (
+              <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-300">
+                2024
+              </span>
+            )}
+          </div>
           <h2 className="mt-1 text-lg font-semibold text-white">{stormName}</h2>
           <p className="text-xs text-slate-400">{stormLocation}</p>
-          <p className="mt-2 text-xs text-amber-300">
-            <span className="font-semibold text-amber-200">
-              {hoursUntilLandfall}h
-            </span>{" "}
-            to landfall
+          <p className="mt-1 text-[10px] leading-relaxed text-sky-300/80">
+            Map pins show Miami Beach coastal assets in the modeled impact zone.
+          </p>
+          <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+            <div>
+              <dt className="text-slate-500">Category</dt>
+              <dd className="font-semibold text-amber-200">{map.storm.category}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Wind at Landfall</dt>
+              <dd className="font-semibold text-white">
+                {map.storm.landfallWindSpeedMph} mph
+              </dd>
+            </div>
+          </dl>
+          <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
+            {map.storm.historicalLandfall}
           </p>
         </div>
 
         <div className="pointer-events-auto flex gap-3">
           <div className="rounded-lg border border-slate-700/60 bg-slate-950/85 px-4 py-3 text-right shadow-xl backdrop-blur-sm">
             <p className="text-[10px] font-medium uppercase tracking-wider text-slate-500">
-              Projected Revenue
+              Predicted Revenue
             </p>
+            <p className="mt-0.5 text-[9px] text-slate-600">OverStorm model</p>
             <p className="mt-1 text-xl font-semibold text-emerald-400">
-              {formatCurrency(projectedRevenue, true)}
+              {formatCurrency(predictedRevenueOpportunity, true)}
             </p>
           </div>
           <div className="rounded-lg border border-slate-700/60 bg-slate-950/85 px-4 py-3 text-right shadow-xl backdrop-blur-sm">
             <p className="text-[10px] font-medium uppercase tracking-wider text-slate-500">
-              At Risk
+              Assets Tracked
             </p>
             <p className="mt-1 text-xl font-semibold text-white">
-              {propertiesAtRisk.toLocaleString()}
+              {map.opportunities.length}
+            </p>
+            <p className="mt-0.5 text-[9px] text-slate-600">
+              {propertiesAtRisk.toLocaleString()} in pipeline
             </p>
           </div>
         </div>
@@ -247,15 +275,18 @@ export function StormMapInner({
             <Marker
               key={`${point.lat}-${point.lng}-${point.label}`}
               position={[point.lat, point.lng]}
-              icon={createTrackLabelIcon(point.label, index === 0)}
+              icon={createTrackLabelIcon(
+                point.label,
+                index === lastTrackIndex,
+              )}
               zIndexOffset={200}
             />
           );
         })}
 
-        {currentPosition && (
+        {landfallPosition && (
           <Marker
-            position={[currentPosition.lat, currentPosition.lng]}
+            position={[landfallPosition.lat, landfallPosition.lng]}
             icon={createStormEyeIcon()}
             zIndexOffset={300}
           />
@@ -272,33 +303,38 @@ export function StormMapInner({
             zIndexOffset={400 + opportunity.riskScore}
           >
             <Popup className="property-popup" closeButton={true}>
-              <div className="min-w-[200px] space-y-3 p-1">
+              <div className="min-w-[220px] space-y-3 p-1">
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                    Property
+                    {opportunity.assetType ?? "Coastal Asset"}
                   </p>
                   <p className="text-sm font-semibold text-slate-900">
                     {opportunity.propertyName}
                   </p>
+                  {opportunity.city && (
+                    <p className="text-xs text-slate-500">{opportunity.city}</p>
+                  )}
                 </div>
                 <dl className="grid grid-cols-2 gap-2 text-xs">
                   <div>
-                    <dt className="text-slate-400">Risk</dt>
+                    <dt className="text-slate-400">Risk Score</dt>
                     <dd className="font-semibold text-slate-900">
                       {opportunity.riskScore}
                     </dd>
+                    <dd className="text-[9px] text-slate-400">OverStorm model</dd>
                   </div>
                   <div>
-                    <dt className="text-slate-400">Revenue</dt>
+                    <dt className="text-slate-400">Pred. Revenue</dt>
                     <dd className="font-semibold text-emerald-700">
                       {formatCurrency(opportunity.expectedRevenue, true)}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-slate-400">Status</dt>
-                    <dd className="font-medium text-slate-800">
-                      {formatStatus(opportunity.status)}
+                    <dt className="text-slate-400">Restoration</dt>
+                    <dd className="font-semibold text-amber-700">
+                      {opportunity.restorationDemandScore}
                     </dd>
+                    <dd className="text-[9px] text-slate-400">OverStorm model</dd>
                   </div>
                   <div>
                     <dt className="text-slate-400">Contact</dt>
@@ -321,21 +357,19 @@ export function StormMapInner({
         ))}
       </MapContainer>
 
-      <div className="storm-map-legend pointer-events-none absolute bottom-4 left-4 z-[1000] rounded-lg border border-slate-700/60 bg-slate-950/85 px-3 py-2.5 text-[10px] text-slate-400 shadow-xl backdrop-blur-sm">
+      <div className="storm-map-legend pointer-events-none absolute bottom-4 left-4 z-[1000] max-w-xs rounded-lg border border-slate-700/60 bg-slate-950/85 px-3 py-2.5 text-[10px] text-slate-400 shadow-xl backdrop-blur-sm">
         <p className="mb-1.5 font-semibold uppercase tracking-wider text-slate-500">
-          Risk Zones
+          Milton Timeline
         </p>
-        <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1">
-            <span className="h-2 w-2 rounded-full bg-red-500" /> High
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="h-2 w-2 rounded-full bg-orange-500" /> Med
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="h-2 w-2 rounded-full bg-yellow-500" /> Low
-          </span>
-        </div>
+        <ul className="space-y-1">
+          {map.storm.timeline.map((entry) => (
+            <li key={entry.label} className="leading-snug">
+              <span className="font-semibold text-sky-300">{entry.label}</span>
+              <span className="text-slate-500"> — </span>
+              <span className="text-slate-400">{entry.description}</span>
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );

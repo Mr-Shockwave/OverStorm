@@ -121,12 +121,18 @@ export const saveDecisionMaker = internalMutation({
     opportunityId: v.id("opportunities"),
     runId: v.id("agentRuns"),
     result: v.object({
+      propertyName: v.string(),
       company: v.string(),
+      matchedCompany: v.string(),
+      matchConfidence: v.number(),
+      verified: v.boolean(),
       contactName: v.string(),
       contactTitle: v.string(),
       email: v.optional(v.string()),
       phone: v.optional(v.string()),
       linkedinUrl: v.optional(v.string()),
+      searchCenterLat: v.optional(v.number()),
+      searchCenterLng: v.optional(v.number()),
       source: v.union(v.literal("fiber"), v.literal("manual")),
     }),
   },
@@ -146,7 +152,13 @@ export const saveDecisionMaker = internalMutation({
 
     await ctx.db.insert("decisionMakers", {
       opportunityId: args.opportunityId,
+      propertyName: args.result.propertyName,
       company: args.result.company,
+      matchedCompany: args.result.matchedCompany,
+      matchConfidence: args.result.matchConfidence,
+      verified: args.result.verified,
+      searchCenterLat: args.result.searchCenterLat,
+      searchCenterLng: args.result.searchCenterLng,
       contactName: args.result.contactName,
       contactTitle: args.result.contactTitle,
       email: args.result.email,
@@ -243,6 +255,120 @@ export const failDiscovery = internalMutation({
       status: "failed",
       errorMessage: args.errorMessage,
       completedAt: Date.now(),
+    });
+  },
+});
+
+export const setDiscoveryProgress = internalMutation({
+  args: {
+    runId: v.id("agentRuns"),
+    step: v.string(),
+    message: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const agentResult = await ctx.db
+      .query("agentResults")
+      .withIndex("by_run_and_type", (q) =>
+        q.eq("runId", args.runId).eq("agentType", "decision_maker"),
+      )
+      .unique();
+
+    if (agentResult) {
+      await ctx.db.patch(agentResult._id, {
+        status: "running",
+        output: {
+          progressStep: args.step,
+          progressMessage: args.message,
+        },
+      });
+    }
+  },
+});
+
+export const saveDiscoveryUnavailable = internalMutation({
+  args: {
+    opportunityId: v.id("opportunities"),
+    runId: v.id("agentRuns"),
+    outcome: v.object({
+      propertyName: v.string(),
+      city: v.string(),
+      address: v.optional(v.string()),
+      latitude: v.optional(v.number()),
+      longitude: v.optional(v.number()),
+      message: v.string(),
+      visitLocation: v.string(),
+      bestCandidate: v.optional(v.string()),
+      bestConfidence: v.optional(v.number()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    const existing = await ctx.db
+      .query("decisionMakers")
+      .withIndex("by_opportunity", (q) =>
+        q.eq("opportunityId", args.opportunityId),
+      )
+      .collect();
+
+    for (const record of existing) {
+      await ctx.db.delete(record._id);
+    }
+
+    const agentResult = await ctx.db
+      .query("agentResults")
+      .withIndex("by_run_and_type", (q) =>
+        q.eq("runId", args.runId).eq("agentType", "decision_maker"),
+      )
+      .unique();
+
+    if (agentResult) {
+      await ctx.db.patch(agentResult._id, {
+        status: "completed",
+        completedAt: now,
+        errorMessage: undefined,
+        output: {
+          availability: "unavailable",
+          message: args.outcome.message,
+          visitLocation: args.outcome.visitLocation,
+          propertyName: args.outcome.propertyName,
+          address: args.outcome.address,
+          latitude: args.outcome.latitude,
+          longitude: args.outcome.longitude,
+          bestCandidate: args.outcome.bestCandidate,
+          bestConfidence: args.outcome.bestConfidence,
+        },
+      });
+    }
+
+    await ctx.db.patch(args.runId, {
+      currentStep: "completed",
+      status: "completed",
+      completedAt: now,
+      errorMessage: undefined,
+    });
+  },
+});
+
+export const patchDecisionMakerContact = internalMutation({
+  args: {
+    opportunityId: v.id("opportunities"),
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const record = await ctx.db
+      .query("decisionMakers")
+      .withIndex("by_opportunity", (q) =>
+        q.eq("opportunityId", args.opportunityId),
+      )
+      .first();
+
+    if (!record) return;
+
+    await ctx.db.patch(record._id, {
+      email: args.email ?? record.email,
+      phone: args.phone ?? record.phone,
     });
   },
 });
