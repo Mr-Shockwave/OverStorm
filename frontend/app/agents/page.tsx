@@ -1,13 +1,5 @@
-import { AppShell } from "@/components/app-shell";
-import { PlaceholderPage } from "@/components/placeholder-page";
+import { AgentsControlCenter } from "@/components/agents-control-center";
 
 export default function AgentsPage() {
-  return (
-    <AppShell>
-      <PlaceholderPage
-        title="Agents"
-        description="Configure and monitor AI agents for risk analysis, outreach, and pipeline automation."
-      />
-    </AppShell>
-  );
+  return <AgentsControlCenter />;
 }
