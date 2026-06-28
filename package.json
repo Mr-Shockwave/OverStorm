@@ -1,5 +1,6 @@
 {
   "dependencies": {
-    "convex": "^1.42.0"
+    "convex": "^1.42.0",
+    "orangeslice": "^2.6.0"
   }
 }

@@ -12,6 +12,8 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 export const runFullAnalysisWorkflow = internalAction({
   args: { runId: v.id("agentRuns") },
   handler: async (ctx, args) => {
+    let currentAgent: "risk" | "revenue" | "decision_maker" | "outreach" = "risk";
+
     try {
       const context = await ctx.runQuery(internal.agentDb.getRunContext, {
         runId: args.runId,
@@ -28,6 +30,8 @@ export const runFullAnalysisWorkflow = internalAction({
         currentStep: "risk",
         status: "running",
       });
+
+      currentAgent = "risk";
 
       const enrichment = await enrichProperty({
         propertyName: opportunity.propertyName,
@@ -77,6 +81,8 @@ export const runFullAnalysisWorkflow = internalAction({
         currentStep: "revenue",
       });
 
+      currentAgent = "revenue";
+
       await ctx.runMutation(internal.agentDb.setAgentResultStatus, {
         runId: args.runId,
         agentType: "revenue",
@@ -102,6 +108,8 @@ export const runFullAnalysisWorkflow = internalAction({
         currentStep: "decision_maker",
       });
 
+      currentAgent = "decision_maker";
+
       await ctx.runMutation(internal.agentDb.setAgentResultStatus, {
         runId: args.runId,
         agentType: "decision_maker",
@@ -112,6 +120,7 @@ export const runFullAnalysisWorkflow = internalAction({
 
       const decisionMaker = await findDecisionMaker({
         propertyName: opportunity.propertyName,
+        location: storm.location,
       });
 
       await ctx.runMutation(internal.agentDb.setAgentResultStatus, {
@@ -129,6 +138,8 @@ export const runFullAnalysisWorkflow = internalAction({
         runId: args.runId,
         currentStep: "outreach",
       });
+
+      currentAgent = "outreach";
 
       await ctx.runMutation(internal.agentDb.setAgentResultStatus, {
         runId: args.runId,
@@ -190,6 +201,7 @@ export const runFullAnalysisWorkflow = internalAction({
       await ctx.runMutation(internal.agentDb.failRun, {
         runId: args.runId,
         errorMessage: message,
+        agentType: currentAgent,
       });
     }
   },

@@ -103,3 +103,18 @@ export function statusStyles(status: string): string {
       return "border-slate-600 bg-slate-800/60 text-slate-400";
   }
 }
+
+export function statusStylesLight(status: string): string {
+  switch (status) {
+    case "running":
+      return "border-sky-200 bg-sky-50 text-sky-700";
+    case "completed":
+      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    case "ready":
+      return "border-violet-200 bg-violet-50 text-violet-700";
+    case "failed":
+      return "border-red-200 bg-red-50 text-red-700";
+    default:
+      return "border-slate-200 bg-slate-100 text-slate-600";
+  }
+}

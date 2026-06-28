@@ -139,8 +139,26 @@ export const failRun = internalMutation({
   args: {
     runId: v.id("agentRuns"),
     errorMessage: v.string(),
+    agentType: v.optional(agentType),
   },
   handler: async (ctx, args) => {
+    if (args.agentType) {
+      const result = await ctx.db
+        .query("agentResults")
+        .withIndex("by_run_and_type", (q) =>
+          q.eq("runId", args.runId).eq("agentType", args.agentType!),
+        )
+        .unique();
+
+      if (result) {
+        await ctx.db.patch(result._id, {
+          status: "failed",
+          errorMessage: args.errorMessage,
+          completedAt: Date.now(),
+        });
+      }
+    }
+
     await ctx.db.patch(args.runId, {
       status: "failed",
       errorMessage: args.errorMessage,

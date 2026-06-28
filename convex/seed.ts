@@ -29,6 +29,10 @@ export const seedDashboard = mutation({
         priorityRank: 1,
         buildingYear: 1974,
         propertyNotes: "Near coastline, High wind exposure",
+        riskExplanation:
+          "Elevated risk due to 1974 construction, coastal proximity, and high wind exposure profile.",
+        revenueExplanation:
+          "Premium restoration opportunity at $180,000 driven by 91 risk score and large commercial footprint.",
       },
       {
         propertyName: "Bayfront Towers",
@@ -38,6 +42,10 @@ export const seedDashboard = mutation({
         priorityRank: 2,
         buildingYear: 1988,
         propertyNotes: "Coastal commercial tower",
+        riskExplanation:
+          "Moderate-high risk from coastal exposure and aging building systems built in 1988.",
+        revenueExplanation:
+          "Strong $95,000 opportunity with priority rank #2 in the Miami Beach pipeline.",
       },
       {
         propertyName: "Sunset Residences",
@@ -47,6 +55,10 @@ export const seedDashboard = mutation({
         priorityRank: 3,
         buildingYear: 2001,
         propertyNotes: "Residential complex, moderate exposure",
+        riskExplanation:
+          "Moderate risk score reflecting newer construction with residual storm surge exposure.",
+        revenueExplanation:
+          "$58,000 expected value based on risk-adjusted property size and market rates.",
       },
     ];
 
@@ -77,6 +89,7 @@ export const seedDashboard = mutation({
       const runId = await ctx.db.insert("agentRuns", {
         stormId,
         opportunityId: topOpportunityId,
+        runKind: "full",
         status: "completed",
         currentStep: "completed",
         startedAt: now - 3600_000,
@@ -209,6 +222,7 @@ export const seedAgentDemo = mutation({
     const runId = await ctx.db.insert("agentRuns", {
       stormId: activeStorm._id,
       opportunityId: topOpportunity._id,
+      runKind: "full",
       status: "completed",
       currentStep: "completed",
       startedAt: now - 3600_000,

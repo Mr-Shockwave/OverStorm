@@ -221,3 +221,14 @@ Displays:
 - outputs
 
 Future version will support fully autonomous workflows.
+
+## Address Intelligence Layer
+
+Future versions will support:
+
+- parcel records
+- county ownership data
+- insurance claim history
+- building permit history
+
+This will improve decision-maker discovery accuracy and risk forecasting.

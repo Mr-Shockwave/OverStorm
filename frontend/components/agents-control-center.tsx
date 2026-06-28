@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { AppShell } from "@/components/app-shell";
 import { AgentCard } from "@/components/agent-card";
@@ -14,8 +14,13 @@ import {
 export function AgentsControlCenter() {
   const controlCenter = useQuery(api.agents.getAgentControlCenter);
   const startAnalysis = useMutation(api.agents.startFullAnalysis);
+  const repairStuckRuns = useMutation(api.agents.repairStuckRuns);
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    void repairStuckRuns({});
+  }, [repairStuckRuns]);
 
   const isLoading = controlCenter === undefined;
   const isRunning =

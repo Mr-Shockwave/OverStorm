@@ -1,12 +1,56 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
+import type { Doc } from "./_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
+
 const AGENT_ORDER = [
   { type: "risk" as const, order: 1 },
   { type: "revenue" as const, order: 2 },
   { type: "decision_maker" as const, order: 3 },
   { type: "outreach" as const, order: 4 },
 ];
+
+function isFullAnalysisRun(run: Doc<"agentRuns">): boolean {
+  return run.runKind !== "discovery";
+}
+
+async function healStuckRuns(ctx: MutationCtx, runs: Doc<"agentRuns">[]) {
+  const now = Date.now();
+
+  for (const run of runs) {
+    if (run.status !== "running") continue;
+
+    const results = await ctx.db
+      .query("agentResults")
+      .withIndex("by_run", (q) => q.eq("runId", run._id))
+      .collect();
+
+    const anyAgentRunning = results.some((result) => result.status === "running");
+    if (anyAgentRunning) continue;
+
+    const decisionMaker = results.find(
+      (result) => result.agentType === "decision_maker",
+    );
+
+    const discoveryFinished =
+      run.runKind === "discovery" && decisionMaker?.status === "completed";
+
+    const legacyDiscoveryFinished =
+      run.runKind === undefined &&
+      run.currentStep === "decision_maker" &&
+      decisionMaker?.status === "completed";
+
+    if (discoveryFinished || legacyDiscoveryFinished) {
+      await ctx.db.patch(run._id, {
+        status: "completed",
+        currentStep: "completed",
+        completedAt: now,
+        errorMessage: undefined,
+      });
+    }
+  }
+}
 
 export const getAgentControlCenter = query({
   args: {},
@@ -45,8 +89,10 @@ export const getAgentControlCenter = query({
       .withIndex("by_storm", (q) => q.eq("stormId", activeStorm._id))
       .collect();
 
+    const fullAnalysisRuns = runs.filter(isFullAnalysisRun);
+
     const currentRun =
-      [...runs].sort((a, b) => b.startedAt - a.startedAt)[0] ?? null;
+      [...fullAnalysisRuns].sort((a, b) => b.startedAt - a.startedAt)[0] ?? null;
 
     let agentResults: Array<{
       _id: string;
@@ -139,6 +185,15 @@ export const getAgentControlCenter = query({
   },
 });
 
+export const repairStuckRuns = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const runs = await ctx.db.query("agentRuns").collect();
+    await healStuckRuns(ctx, runs);
+    return { repaired: true };
+  },
+});
+
 export const startFullAnalysis = mutation({
   args: {
     opportunityId: v.optional(v.id("opportunities")),
@@ -175,13 +230,22 @@ export const startFullAnalysis = mutation({
       opportunityId = top._id;
     }
 
-    const running = await ctx.db
+    const stormRuns = await ctx.db
       .query("agentRuns")
       .withIndex("by_storm", (q) => q.eq("stormId", activeStorm._id))
       .collect();
 
-    const activeRun = running.find((run) => run.status === "running");
-    if (activeRun) {
+    await healStuckRuns(ctx, stormRuns);
+
+    const refreshedRuns = await ctx.db
+      .query("agentRuns")
+      .withIndex("by_storm", (q) => q.eq("stormId", activeStorm._id))
+      .collect();
+
+    const activeFullRun = refreshedRuns.find(
+      (run) => run.status === "running" && isFullAnalysisRun(run),
+    );
+    if (activeFullRun) {
       throw new Error("An analysis is already in progress");
     }
 
@@ -190,6 +254,7 @@ export const startFullAnalysis = mutation({
     const runId = await ctx.db.insert("agentRuns", {
       stormId: activeStorm._id,
       opportunityId,
+      runKind: "full",
       status: "running",
       currentStep: "storm_event",
       startedAt: now,

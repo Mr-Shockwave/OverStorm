@@ -38,6 +38,11 @@ export const agentRunStatus = v.union(
   v.literal("failed"),
 );
 
+export const agentRunKind = v.union(
+  v.literal("full"),
+  v.literal("discovery"),
+);
+
 export const workflowStep = v.union(
   v.literal("storm_event"),
   v.literal("risk"),
@@ -57,6 +62,7 @@ export const agentOutput = v.object({
   company: v.optional(v.string()),
   contactName: v.optional(v.string()),
   contactTitle: v.optional(v.string()),
+  phone: v.optional(v.string()),
   emailDraftReady: v.optional(v.boolean()),
   emailDraft: v.optional(v.string()),
   outreachRecommendation: v.optional(v.string()),
@@ -85,6 +91,8 @@ export default defineSchema({
     priorityRank: v.optional(v.number()),
     buildingYear: v.optional(v.number()),
     propertyNotes: v.optional(v.string()),
+    riskExplanation: v.optional(v.string()),
+    revenueExplanation: v.optional(v.string()),
   })
     .index("by_storm", ["stormId"])
     .index("by_storm_and_rank", ["stormId", "priorityRank"]),
@@ -102,6 +110,7 @@ export default defineSchema({
   agentRuns: defineTable({
     stormId: v.id("storms"),
     opportunityId: v.id("opportunities"),
+    runKind: v.optional(agentRunKind),
     status: agentRunStatus,
     currentStep: workflowStep,
     startedAt: v.number(),
@@ -136,4 +145,16 @@ export default defineSchema({
   })
     .index("by_storm", ["stormId"])
     .index("by_completed_at", ["completedAt"]),
+
+  decisionMakers: defineTable({
+    opportunityId: v.id("opportunities"),
+    company: v.string(),
+    contactName: v.string(),
+    contactTitle: v.string(),
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    linkedinUrl: v.optional(v.string()),
+    source: v.union(v.literal("fiber"), v.literal("manual")),
+    discoveredAt: v.number(),
+  }).index("by_opportunity", ["opportunityId"]),
 });
